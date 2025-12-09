@@ -139,7 +139,7 @@ export default function Home() {
     try {
       const playerId = uuidv4();
 
-      // Register room with server (private, single player)
+      // Register room with server (private, for study)
       const response = await fetch('/api/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -148,7 +148,6 @@ export default function Home() {
           playerId,
           roomName: 'Study Session',
           isPrivate: true,
-          maxPlayers: 1,
         }),
       });
 
