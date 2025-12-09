@@ -17,6 +17,7 @@ import BuzzerButton from '@/components/BuzzerButton';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import WaitingRoom from '@/components/WaitingRoom';
+import GameInstructions from '@/components/GameInstructions';
 
 export default function GameRoom() {
   const params = useParams();
@@ -30,6 +31,7 @@ export default function GameRoom() {
   const [showAnswer, setShowAnswer] = useState(false);
   const [canBuzz, setCanBuzz] = useState(false);
   const [showDailyDoubleAnswer, setShowDailyDoubleAnswer] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   // Connection limit states
   const [inWaitingRoom, setInWaitingRoom] = useState(false);
@@ -461,6 +463,26 @@ export default function GameRoom() {
                 Playing as: <strong className="text-yellow-400">{playerName}</strong>
                 {isHost && <span className="ml-2 text-xs bg-yellow-500 text-blue-900 px-2 py-0.5 rounded">HOST</span>}
               </span>
+              <button
+                onClick={() => setShowHelpModal(true)}
+                className="p-2 bg-blue-800 hover:bg-blue-700 rounded-lg transition-colors"
+                title="How to Play"
+                aria-label="Show game instructions"
+              >
+                <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+              <a
+                href="mailto:info@aiqso.io?subject=Bible%20Jeopardy%20Feedback"
+                className="p-2 bg-blue-800 hover:bg-blue-700 rounded-lg transition-colors"
+                title="Send Feedback"
+                aria-label="Send feedback via email"
+              >
+                <svg className="w-5 h-5 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </a>
             </div>
           </div>
         </header>
@@ -504,9 +526,10 @@ export default function GameRoom() {
                 />
               </div>
 
-              {/* Sidebar - Scoreboard */}
-              <div className="lg:col-span-1">
+              {/* Sidebar - Scoreboard & Instructions */}
+              <div className="lg:col-span-1 space-y-4">
                 <Scoreboard players={players} hostId={hostId} teams={teams} isTeamMode={isTeamMode} />
+                <GameInstructions isHost={isHost} isTeamMode={isTeamMode} compact={true} />
               </div>
             </div>
           )}
@@ -593,6 +616,35 @@ export default function GameRoom() {
             buzzedPlayerName={buzzedPlayer?.name}
             isCurrentBuzzer={buzzedPlayer?.id === playerId}
           />
+        )}
+
+        {/* Help Modal */}
+        {showHelpModal && (
+          <div
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowHelpModal(false)}
+          >
+            <div
+              className="bg-blue-900 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-blue-700"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-blue-900 px-6 py-4 border-b border-blue-700 flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-yellow-400">How to Play</h2>
+                <button
+                  onClick={() => setShowHelpModal(false)}
+                  className="p-2 hover:bg-blue-800 rounded-lg transition-colors"
+                  aria-label="Close help"
+                >
+                  <svg className="w-6 h-6 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-6">
+                <GameInstructions isHost={isHost} isTeamMode={isTeamMode} compact={false} />
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </ErrorBoundary>
