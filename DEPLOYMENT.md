@@ -1,6 +1,8 @@
 # Bible Jeopardy - Deployment & Online Play Guide
 
-This guide covers everything you need to host your Bible Jeopardy game online and play with friends over Zoom or other video calls.
+This guide covers everything you need to host your Bible Jeopardy game online and play with friends over Zoom, in-person with a TV, or other video calls.
+
+**Live Demo:** [jeopardy.aiqso.io](https://jeopardy.aiqso.io)
 
 ---
 
@@ -92,18 +94,11 @@ Vercel is the best platform for Next.js apps - zero configuration needed.
 If your code isn't on GitHub yet:
 
 ```bash
-# Navigate to your project
-cd /Users/cyberque/projects/bible_family_jeopardy
+# Clone the repository
+git clone https://github.com/qvidal01/bible-jeopardy.git
+cd bible-jeopardy
 
-# Initialize git (if not already)
-git init
-
-# Add all files
-git add .
-
-# Commit
-git commit -m "Bible Jeopardy - ready for deployment"
-
+# Or if starting from scratch:
 # Create a new repository on GitHub (github.com/new)
 # Then push:
 git remote add origin https://github.com/YOUR_USERNAME/bible-jeopardy.git
@@ -247,6 +242,64 @@ If you need to update environment variables later:
 7. Host marks correct/wrong
 8. Repeat!
 ```
+
+---
+
+## Playing In-Person (TV + Phones)
+
+The best experience for family worship or congregation gatherings!
+
+### Setup
+
+1. **Host Device**: Connect laptop/tablet to TV or projector
+2. **Player Devices**: Each player uses their phone as a buzzer
+3. **Network**: All devices on same WiFi (or use the public URL)
+
+### Game Flow In-Person
+
+```
+1. Host displays game board on TV
+2. Host reads the question aloud (or everyone reads from TV)
+3. Players buzz in on their phones
+4. DRAMATIC OVERLAY shows who buzzed first!
+   - Full-screen with player's name
+   - Flashing yellow/red animation
+   - Loud buzz sound
+5. Player answers verbally
+6. Host marks correct/wrong on their device
+7. Score updates for everyone to see
+```
+
+### Why In-Person is Best
+
+| Feature | Zoom | In-Person |
+|---------|------|-----------|
+| Buzz visibility | Small notification | Full-screen dramatic overlay |
+| Response time | Slight delay | Instant |
+| Energy level | Medium | High |
+| Audience engagement | Limited | Everyone sees the TV |
+| Sound effects | Through speakers | Room-filling |
+
+### Tips for In-Person Play
+
+1. **TV/Projector Setup**
+   - Use a large screen everyone can see
+   - Ensure good WiFi coverage
+   - Test the buzz overlay beforehand
+
+2. **Seating Arrangement**
+   - Players face the TV
+   - Keep phones charged or near outlets
+   - Space players apart to prevent screen peeking
+
+3. **Audio**
+   - Connect TV/laptop to speakers for sound effects
+   - The buzz sound is loud and attention-grabbing
+
+4. **Team Mode**
+   - Great for larger groups
+   - Red vs Blue creates fun competition
+   - Teams can huddle to discuss answers
 
 ### Tips for Smooth Gameplay
 

@@ -2,6 +2,8 @@
 
 This guide covers hosting Bible Jeopardy on your own Proxmox server for unlimited players and full control.
 
+**Live Demo:** [jeopardy.aiqso.io](https://jeopardy.aiqso.io)
+
 ---
 
 ## Why Self-Host?
@@ -81,8 +83,8 @@ useradd -m -s /bin/bash appuser
 su - appuser
 
 # Clone repository
-git clone https://github.com/qvidal01/bible_family_jeopardy.git
-cd bible_family_jeopardy
+git clone https://github.com/qvidal01/bible-jeopardy.git
+cd bible-jeopardy
 
 # Install dependencies
 npm install
@@ -414,7 +416,7 @@ ss -tunap | grep 3000 | wc -l
 pm2 start bible-jeopardy
 
 # Restart after code changes
-cd ~/bible_family_jeopardy
+cd ~/bible-jeopardy
 git pull
 npm install
 npm run build
