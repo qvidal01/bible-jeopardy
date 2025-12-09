@@ -6,9 +6,10 @@ import { CATEGORY_DEFINITIONS } from '@/data/categories';
 interface CategorySelectorProps {
   onStartGame: (categoryIds: string[]) => void;
   onCancel: () => void;
+  isStudyMode?: boolean;
 }
 
-export default function CategorySelector({ onStartGame, onCancel }: CategorySelectorProps) {
+export default function CategorySelector({ onStartGame, onCancel, isStudyMode = false }: CategorySelectorProps) {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   const toggleCategory = (categoryId: string) => {
@@ -29,12 +30,19 @@ export default function CategorySelector({ onStartGame, onCancel }: CategorySele
   };
 
   return (
-    <div className="bg-blue-900/80 rounded-2xl p-6 max-w-4xl mx-auto border border-blue-700">
-      <h2 className="text-2xl font-bold text-yellow-400 text-center mb-2">
-        Select 5 Categories
+    <div className={`rounded-2xl p-6 max-w-4xl mx-auto border ${
+      isStudyMode
+        ? 'bg-green-900/30 border-green-700'
+        : 'bg-blue-900/80 border-blue-700'
+    }`}>
+      <h2 className={`text-2xl font-bold text-center mb-2 ${isStudyMode ? 'text-green-400' : 'text-yellow-400'}`}>
+        {isStudyMode ? '📖 Select Categories to Study' : 'Select 5 Categories'}
       </h2>
       <p className="text-blue-300 text-center mb-6">
-        Choose the categories for your Jeopardy board ({selectedCategories.length}/5 selected)
+        {isStudyMode
+          ? `Choose what you want to practice (${selectedCategories.length}/5 selected)`
+          : `Choose the categories for your Jeopardy board (${selectedCategories.length}/5 selected)`
+        }
       </p>
 
       {/* Random button */}
@@ -103,7 +111,7 @@ export default function CategorySelector({ onStartGame, onCancel }: CategorySele
           onClick={onCancel}
           className="flex-1 py-3 bg-blue-800 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors"
         >
-          Cancel
+          {isStudyMode ? 'Exit' : 'Cancel'}
         </button>
         <button
           onClick={() => onStartGame(selectedCategories)}
@@ -111,12 +119,14 @@ export default function CategorySelector({ onStartGame, onCancel }: CategorySele
           className={`
             flex-1 py-3 font-bold rounded-xl transition-colors
             ${selectedCategories.length === 5
-              ? 'bg-yellow-500 hover:bg-yellow-400 text-blue-900'
+              ? isStudyMode
+                ? 'bg-green-600 hover:bg-green-500 text-white'
+                : 'bg-yellow-500 hover:bg-yellow-400 text-blue-900'
               : 'bg-blue-950 text-blue-700 cursor-not-allowed'
             }
           `}
         >
-          Start Game
+          {isStudyMode ? 'Start Studying' : 'Start Game'}
         </button>
       </div>
     </div>

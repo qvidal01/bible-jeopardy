@@ -24,7 +24,7 @@ export default function Home() {
   const router = useRouter();
   const [playerName, setPlayerName] = useState('');
   const [joinCode, setJoinCode] = useState('');
-  const [mode, setMode] = useState<'menu' | 'create' | 'join' | 'browse'>('menu');
+  const [mode, setMode] = useState<'menu' | 'create' | 'join' | 'browse' | 'study'>('menu');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSpectator, setIsSpectator] = useState(false);
@@ -129,6 +129,48 @@ export default function Home() {
   const handleJoinPublicRoom = (code: string) => {
     setJoinCode(code);
     setMode('join');
+  };
+
+  const handleStudyMode = async () => {
+    const name = playerName.trim() || 'Student';
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const playerId = uuidv4();
+
+      // Register room with server (private, single player)
+      const response = await fetch('/api/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerName: name,
+          playerId,
+          roomName: 'Study Session',
+          isPrivate: true,
+          maxPlayers: 1,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to create study session');
+      }
+
+      const { room } = await response.json();
+
+      // Store player info in sessionStorage
+      sessionStorage.setItem('playerId', playerId);
+      sessionStorage.setItem('playerName', name);
+      sessionStorage.setItem('isHost', 'true');
+      sessionStorage.setItem('gameMode', 'individual');
+      sessionStorage.setItem('isStudyMode', 'true');
+
+      router.push(`/game/${room.code}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start study session');
+      setIsLoading(false);
+    }
   };
 
   const handleJoinGame = async () => {
@@ -236,6 +278,15 @@ export default function Home() {
                     aria-label="Join an existing game with code"
                   >
                     Join with Code
+                  </button>
+                  <button
+                    onClick={() => setMode('study')}
+                    className="w-full py-4 px-6 bg-green-600 hover:bg-green-500 text-white font-bold text-xl rounded-xl
+                               transition-all transform hover:scale-105 shadow-lg
+                               focus:outline-none focus:ring-4 focus:ring-green-400"
+                    aria-label="Practice by yourself in study mode"
+                  >
+                    Study Mode
                   </button>
                   <button
                     onClick={() => setMode('browse')}
@@ -550,6 +601,78 @@ export default function Home() {
                 </div>
               )}
 
+              {/* Study Mode */}
+              {mode === 'study' && (
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <div className="text-4xl mb-2">📖</div>
+                    <h2 className="text-2xl font-bold text-green-400">
+                      Study Mode
+                    </h2>
+                    <p className="text-blue-300 text-sm mt-2">
+                      Practice Bible trivia at your own pace
+                    </p>
+                  </div>
+
+                  <div className="bg-green-900/20 rounded-lg p-4 border border-green-700/50">
+                    <h3 className="text-green-400 font-semibold mb-2">How it works:</h3>
+                    <ul className="text-blue-300 text-sm space-y-1">
+                      <li>• Select categories you want to study</li>
+                      <li>• Click questions to reveal them</li>
+                      <li>• Think of your answer, then reveal it</li>
+                      <li>• Score yourself: Did you get it right?</li>
+                      <li>• Track your progress as you learn!</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <label htmlFor="study-name" className="block text-blue-200 mb-2 font-medium">
+                      Your Name (optional)
+                    </label>
+                    <input
+                      id="study-name"
+                      type="text"
+                      value={playerName}
+                      onChange={(e) => {
+                        setPlayerName(e.target.value);
+                        setError('');
+                      }}
+                      placeholder="Student"
+                      className="w-full px-4 py-3 rounded-lg bg-blue-900/50 border border-blue-600 text-white
+                                 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-green-400"
+                      maxLength={20}
+                      autoComplete="name"
+                    />
+                  </div>
+
+                  {error && (
+                    <p className="text-red-400 text-sm" role="alert">
+                      {error}
+                    </p>
+                  )}
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setMode('menu');
+                        setError('');
+                      }}
+                      className="flex-1 py-3 px-4 bg-blue-800 hover:bg-blue-700 text-white font-semibold rounded-lg
+                                 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={handleStudyMode}
+                      className="flex-1 py-3 px-4 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg
+                                 transition-colors focus:outline-none focus:ring-2 focus:ring-green-400"
+                    >
+                      Start Studying
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Browse Public Rooms */}
               {mode === 'browse' && (
                 <div className="space-y-4">
@@ -672,8 +795,8 @@ export default function Home() {
                   <span>Final Jeopardy round</span>
                 </div>
                 <div className="flex items-center gap-2 text-blue-200">
-                  <span className="text-green-400 text-lg">R2</span>
-                  <span>Double Jeopardy (2x points)</span>
+                  <span className="text-green-400 text-lg">📖</span>
+                  <span>Study Mode for solo practice</span>
                 </div>
                 <div className="flex items-center gap-2 text-blue-200">
                   <span className="text-red-400 text-lg">VS</span>

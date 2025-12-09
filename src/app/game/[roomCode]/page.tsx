@@ -32,6 +32,7 @@ export default function GameRoom() {
   const [canBuzz, setCanBuzz] = useState(false);
   const [showDailyDoubleAnswer, setShowDailyDoubleAnswer] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [isStudyMode, setIsStudyMode] = useState(false);
 
   // Connection limit states
   const [inWaitingRoom, setInWaitingRoom] = useState(false);
@@ -150,6 +151,10 @@ export default function GameRoom() {
     setIsHost(storedIsHost);
     setRoomCode(roomCode);
 
+    // Check for study mode
+    const studyMode = sessionStorage.getItem('isStudyMode') === 'true';
+    setIsStudyMode(studyMode);
+
     if (storedIsHost) {
       setHostId(storedPlayerId);
 
@@ -161,6 +166,11 @@ export default function GameRoom() {
         const blueName = sessionStorage.getItem('teamBlueName') || 'Blue Team';
         createTeam(redName, '#ef4444');
         createTeam(blueName, '#3b82f6');
+      }
+
+      // In study mode, skip lobby and go to category select
+      if (studyMode) {
+        setStatus('category-select');
       }
     }
 
@@ -461,8 +471,17 @@ export default function GameRoom() {
               <h1 className="text-2xl md:text-3xl font-bold text-yellow-400">
                 BIBLE JEOPARDY
                 {round === 2 && <span className="ml-2 text-lg">- Double Jeopardy!</span>}
+                {isStudyMode && (
+                  <span className="ml-2 text-lg text-green-400">- Study Mode</span>
+                )}
               </h1>
-              <p className="text-blue-300 text-sm">Room: {roomCode}</p>
+              {isStudyMode ? (
+                <p className="text-green-300 text-sm flex items-center gap-1">
+                  <span>📖</span> Practice at your own pace
+                </p>
+              ) : (
+                <p className="text-blue-300 text-sm">Room: {roomCode}</p>
+              )}
             </div>
             <div className="flex items-center gap-4">
               <span className="text-white">
@@ -512,9 +531,16 @@ export default function GameRoom() {
             <CategorySelector
               onStartGame={handleStartGame}
               onCancel={() => {
-                setStatus('lobby');
-                broadcastEvent(GAME_EVENTS.GAME_STATE_UPDATE, { status: 'lobby' });
+                if (isStudyMode) {
+                  // In study mode, go back to home
+                  sessionStorage.removeItem('isStudyMode');
+                  router.push('/');
+                } else {
+                  setStatus('lobby');
+                  broadcastEvent(GAME_EVENTS.GAME_STATE_UPDATE, { status: 'lobby' });
+                }
               }}
+              isStudyMode={isStudyMode}
             />
           )}
 
