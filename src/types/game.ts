@@ -81,6 +81,7 @@ export interface GameState {
   currentQuestion: Question | null;
   buzzedPlayer: Player | null;
   buzzOrder: { playerId: string; time: number }[];
+  wrongAnswerers: string[]; // Player IDs who answered wrong on current question
   round: 1 | 2; // 1 = Jeopardy, 2 = Double Jeopardy
   selectedCategories: string[];
   // Team mode

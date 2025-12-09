@@ -15,8 +15,11 @@ export default function Scoreboard({
   teams = [],
   isTeamMode = false,
 }: ScoreboardProps) {
-  // Sort players by score (descending)
-  const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+  // Filter out host and sort players by score (descending)
+  // Host is the game facilitator, not a player
+  const sortedPlayers = [...players]
+    .filter(p => p.id !== hostId)
+    .sort((a, b) => b.score - a.score);
 
   // Sort teams by score
   const sortedTeams = [...teams].sort((a, b) => b.score - a.score);
@@ -95,16 +98,6 @@ export default function Scoreboard({
                     style={{ backgroundColor: teamColor }}
                     aria-hidden="true"
                   />
-                )}
-
-                {/* Host badge */}
-                {player.id === hostId && (
-                  <span
-                    className="text-xs bg-yellow-500 text-blue-900 px-1.5 py-0.5 rounded font-bold"
-                    aria-label="Host"
-                  >
-                    HOST
-                  </span>
                 )}
 
                 {/* Spectator badge */}

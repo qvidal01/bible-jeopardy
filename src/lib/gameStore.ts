@@ -26,10 +26,13 @@ interface GameStore extends GameState {
   selectQuestion: (question: Question) => void;
   playerBuzz: (playerId: string, time: number) => void;
   resetBuzz: () => void;
+  addWrongAnswerer: (playerId: string) => void;
+  clearWrongAnswerers: () => void;
   markQuestionAnswered: (questionId: string, answeredBy?: string) => void;
   setSelectedCategories: (categories: string[]) => void;
   initializeBoard: (categoryIds: string[]) => void;
   resetGame: () => void;
+  fullReset: () => void;
   updateGameState: (state: Partial<GameState>) => void;
   // Round management
   setRound: (round: 1 | 2) => void;
@@ -67,13 +70,14 @@ const initialState: Omit<GameState, 'updateGameState'> = {
   currentQuestion: null,
   buzzedPlayer: null,
   buzzOrder: [],
+  wrongAnswerers: [], // Track who answered wrong on current question
   round: 1,
   selectedCategories: [],
   isTeamMode: false,
   teams: [],
   dailyDoubleState: null,
   finalJeopardy: null,
-  timerDuration: 30,
+  timerDuration: 10,
   soundEnabled: true,
 };
 
@@ -120,6 +124,7 @@ export const useGameStore = create<GameStore>()(
           status: 'daily-double',
           buzzOrder: [],
           buzzedPlayer: null,
+          wrongAnswerers: [], // Clear wrong answerers for new question
           dailyDoubleState: {
             question,
             playerId,
@@ -134,6 +139,7 @@ export const useGameStore = create<GameStore>()(
           status: 'question',
           buzzOrder: [],
           buzzedPlayer: null,
+          wrongAnswerers: [], // Clear wrong answerers for new question
         });
       }
     },
@@ -163,6 +169,14 @@ export const useGameStore = create<GameStore>()(
         buzzedPlayer: null,
         status: 'question',
       }),
+
+    addWrongAnswerer: (playerId) =>
+      set((state) => ({
+        wrongAnswerers: [...state.wrongAnswerers, playerId],
+      })),
+
+    clearWrongAnswerers: () =>
+      set({ wrongAnswerers: [] }),
 
     markQuestionAnswered: (questionId, answeredBy) =>
       set((state) => {
@@ -254,6 +268,12 @@ export const useGameStore = create<GameStore>()(
         isTeamMode: get().isTeamMode,
         timerDuration: get().timerDuration,
         soundEnabled: get().soundEnabled,
+      }),
+
+    // Complete reset - clears everything including players
+    fullReset: () =>
+      set({
+        ...initialState,
       }),
 
     updateGameState: (newState) => set((state) => ({ ...state, ...newState })),
@@ -467,6 +487,7 @@ export const useFinalJeopardy = () => useGameStore((state) => state.finalJeopard
 export const useDailyDouble = () => useGameStore((state) => state.dailyDoubleState);
 export const useTimerDuration = () => useGameStore((state) => state.timerDuration);
 export const useSoundEnabled = () => useGameStore((state) => state.soundEnabled);
+export const useWrongAnswerers = () => useGameStore((state) => state.wrongAnswerers);
 
 // Generate a random room code
 export function generateRoomCode(): string {

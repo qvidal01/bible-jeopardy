@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
-import { generateRoomCode } from '@/lib/gameStore';
+import { generateRoomCode, useGameStore } from '@/lib/gameStore';
 import { sanitizePlayerName, isValidRoomCode } from '@/lib/validation';
 import { initSounds } from '@/lib/sounds';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -22,6 +22,7 @@ interface PublicRoom {
 
 export default function Home() {
   const router = useRouter();
+  const fullReset = useGameStore((state) => state.fullReset);
   const [playerName, setPlayerName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [mode, setMode] = useState<'menu' | 'create' | 'join' | 'browse' | 'study'>('menu');
@@ -120,6 +121,8 @@ export default function Home() {
         sessionStorage.setItem('zoomLink', room.zoomLink);
       }
 
+      // Clear any previous game state before navigating
+      fullReset();
       router.push(`/game/${room.code}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create game');
@@ -166,6 +169,8 @@ export default function Home() {
       sessionStorage.setItem('gameMode', 'individual');
       sessionStorage.setItem('isStudyMode', 'true');
 
+      // Clear any previous game state before navigating
+      fullReset();
       router.push(`/game/${room.code}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start study session');
@@ -228,6 +233,8 @@ export default function Home() {
         sessionStorage.setItem('isSpectator', 'true');
       }
 
+      // Clear any previous game state before navigating
+      fullReset();
       router.push(`/game/${upperCode}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to join game');

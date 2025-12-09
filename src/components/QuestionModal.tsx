@@ -19,6 +19,7 @@ interface QuestionModalProps {
   playerId: string;
   buzzOrder?: { playerId: string; time: number }[];
   players?: Player[];
+  wrongAnswerers?: string[]; // Players who already answered wrong on this question
 }
 
 export default function QuestionModal({
@@ -34,7 +35,11 @@ export default function QuestionModal({
   playerId,
   buzzOrder = [],
   players = [],
+  wrongAnswerers = [],
 }: QuestionModalProps) {
+  // Check if current player already answered wrong on this question
+  const hasAnsweredWrong = wrongAnswerers.includes(playerId);
+  const effectiveCanBuzz = canBuzz && !hasAnsweredWrong;
   const isCurrentBuzzer = buzzedPlayer?.id === playerId;
   const timerDuration = useTimerDuration();
   const soundEnabled = useSoundEnabled();
@@ -61,7 +66,7 @@ export default function QuestionModal({
   // Keyboard navigation - Spacebar to buzz
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && canBuzz && !buzzedPlayer && !isHost) {
+      if (e.code === 'Space' && effectiveCanBuzz && !buzzedPlayer && !isHost) {
         e.preventDefault();
         handleBuzz();
       }
@@ -69,7 +74,7 @@ export default function QuestionModal({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [canBuzz, buzzedPlayer, isHost]);
+  }, [effectiveCanBuzz, buzzedPlayer, isHost]);
 
   const handleBuzz = useCallback(() => {
     if (soundEnabled) {
@@ -236,7 +241,7 @@ export default function QuestionModal({
         {/* Controls */}
         <div className="px-8 pb-8">
           {/* Player Buzz Button */}
-          {!isHost && !buzzedPlayer && canBuzz && (
+          {!isHost && !buzzedPlayer && effectiveCanBuzz && (
             <div>
               <button
                 onClick={handleBuzz}
@@ -253,8 +258,15 @@ export default function QuestionModal({
             </div>
           )}
 
+          {/* Player already answered wrong - can't buzz again */}
+          {!isHost && !buzzedPlayer && hasAnsweredWrong && (
+            <p className="text-center text-yellow-400 text-xl" role="status">
+              You already answered this question
+            </p>
+          )}
+
           {/* Waiting for buzz */}
-          {!isHost && !buzzedPlayer && !canBuzz && (
+          {!isHost && !buzzedPlayer && !canBuzz && !hasAnsweredWrong && (
             <p className="text-center text-blue-300 text-xl" role="status">
               Waiting for host to enable buzzer...
             </p>
@@ -303,24 +315,37 @@ export default function QuestionModal({
                 </button>
               )}
 
-              {/* Self-scoring for solo play (after answer revealed, no one buzzed) */}
+              {/* No one buzzed - just close and return to board */}
               {showAnswer && !buzzedPlayer && (
+                <button
+                  onClick={onClose}
+                  className="w-full py-4 bg-yellow-500 hover:bg-yellow-400 text-blue-900 text-xl font-bold rounded-xl transition-colors
+                             focus:outline-none focus:ring-4 focus:ring-yellow-300"
+                >
+                  Back to Board
+                </button>
+              )}
+
+              {/* Judging buttons after answer revealed with a buzzer */}
+              {showAnswer && buzzedPlayer && (
                 <div className="space-y-3">
-                  <p className="text-center text-blue-300 text-sm">Did you get it right?</p>
+                  <p className="text-center text-blue-300 text-sm">Did {buzzedPlayer.name} get it right?</p>
                   <div className="flex gap-4">
                     <button
                       onClick={() => handleJudge(true)}
                       className="flex-1 py-4 bg-green-600 hover:bg-green-500 text-white text-xl font-bold rounded-xl transition-colors
                                  focus:outline-none focus:ring-4 focus:ring-green-400"
+                      aria-label={`Mark ${buzzedPlayer.name}'s answer as correct, adding $${question.value}`}
                     >
-                      Yes! (+${question.value})
+                      Correct (+${question.value})
                     </button>
                     <button
                       onClick={() => handleJudge(false)}
                       className="flex-1 py-4 bg-red-600 hover:bg-red-500 text-white text-xl font-bold rounded-xl transition-colors
                                  focus:outline-none focus:ring-4 focus:ring-red-400"
+                      aria-label={`Mark ${buzzedPlayer.name}'s answer as wrong, subtracting $${question.value}`}
                     >
-                      No (-${question.value})
+                      Wrong (-${question.value})
                     </button>
                   </div>
                   <button
@@ -331,17 +356,6 @@ export default function QuestionModal({
                     Skip (no points)
                   </button>
                 </div>
-              )}
-
-              {/* Close button after answer revealed and someone was judged */}
-              {showAnswer && buzzedPlayer && (
-                <button
-                  onClick={onClose}
-                  className="w-full py-4 bg-yellow-500 hover:bg-yellow-400 text-blue-900 text-xl font-bold rounded-xl transition-colors
-                             focus:outline-none focus:ring-4 focus:ring-yellow-300"
-                >
-                  Back to Board
-                </button>
               )}
             </div>
           )}

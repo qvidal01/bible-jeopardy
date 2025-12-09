@@ -104,7 +104,16 @@ export default function GameRoom() {
     enableTeamMode,
     createTeam,
     joinTeam,
+    addWrongAnswerer,
+    wrongAnswerers,
+    fullReset,
   } = useGameStore();
+
+  // Clear any previous game state when entering a new room
+  useEffect(() => {
+    // Reset state when room code changes to prevent stale data
+    fullReset();
+  }, [roomCode, fullReset]);
 
   // Initialize sounds on mount
   useEffect(() => {
@@ -433,9 +442,13 @@ export default function GameRoom() {
       setShowAnswer(true);
     });
 
-    channel.bind(GAME_EVENTS.BUZZ_RESET, () => {
+    channel.bind(GAME_EVENTS.BUZZ_RESET, (data: { wrongPlayerId?: string }) => {
       resetBuzz();
       setCanBuzz(true);
+      // Track who answered wrong so they can't buzz again
+      if (data?.wrongPlayerId) {
+        addWrongAnswerer(data.wrongPlayerId);
+      }
     });
 
     channel.bind(GAME_EVENTS.GAME_STATE_UPDATE, (data: Record<string, unknown>) => {
@@ -508,7 +521,7 @@ export default function GameRoom() {
       channel.unbind_all();
       pusher.unsubscribe(getGameChannel(roomCode));
     };
-  }, [playerId, roomCode, soundEnabled, addPlayer, removePlayer, initializeBoard, selectQuestion, playerBuzz, updatePlayerScore, markQuestionAnswered, resetBuzz, updateGameState, updateActivity, hostDisconnected, handleHostReconnected, setHostId, players, isHost, status, board, round, isTeamMode, teams, setStatus, setBoard, setRound, enableTeamMode]);
+  }, [playerId, roomCode, soundEnabled, addPlayer, removePlayer, initializeBoard, selectQuestion, playerBuzz, updatePlayerScore, markQuestionAnswered, resetBuzz, updateGameState, updateActivity, hostDisconnected, handleHostReconnected, setHostId, players, isHost, status, board, round, isTeamMode, teams, setStatus, setBoard, setRound, enableTeamMode, addWrongAnswerer]);
 
   // Handle category selection and game start
   const handleStartGame = (categoryIds: string[]) => {
@@ -568,10 +581,11 @@ export default function GameRoom() {
       // Close question if correct OR if self-scoring (no buzzedPlayer)
       handleCloseQuestion();
     } else {
-      // Wrong answer with buzzer - allow others to try
+      // Wrong answer with buzzer - track who got it wrong, allow others to try
+      addWrongAnswerer(playerToScore.id);
       resetBuzz();
       setCanBuzz(true);
-      broadcastEvent(GAME_EVENTS.BUZZ_RESET, {});
+      broadcastEvent(GAME_EVENTS.BUZZ_RESET, { wrongPlayerId: playerToScore.id });
     }
   };
 
@@ -889,6 +903,7 @@ export default function GameRoom() {
             playerId={playerId}
             buzzOrder={buzzOrder}
             players={players}
+            wrongAnswerers={wrongAnswerers}
           />
         )}
 
