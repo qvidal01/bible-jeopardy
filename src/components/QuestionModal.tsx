@@ -248,8 +248,38 @@ export default function QuestionModal({
                 </button>
               )}
 
-              {/* Close button after answer revealed */}
-              {showAnswer && (
+              {/* Self-scoring for solo play (after answer revealed, no one buzzed) */}
+              {showAnswer && !buzzedPlayer && (
+                <div className="space-y-3">
+                  <p className="text-center text-blue-300 text-sm">Did you get it right?</p>
+                  <div className="flex gap-4">
+                    <button
+                      onClick={() => handleJudge(true)}
+                      className="flex-1 py-4 bg-green-600 hover:bg-green-500 text-white text-xl font-bold rounded-xl transition-colors
+                                 focus:outline-none focus:ring-4 focus:ring-green-400"
+                    >
+                      Yes! (+${question.value})
+                    </button>
+                    <button
+                      onClick={() => handleJudge(false)}
+                      className="flex-1 py-4 bg-red-600 hover:bg-red-500 text-white text-xl font-bold rounded-xl transition-colors
+                                 focus:outline-none focus:ring-4 focus:ring-red-400"
+                    >
+                      No (-${question.value})
+                    </button>
+                  </div>
+                  <button
+                    onClick={onClose}
+                    className="w-full py-3 bg-blue-700 hover:bg-blue-600 text-white text-lg font-semibold rounded-xl transition-colors
+                               focus:outline-none focus:ring-4 focus:ring-blue-400"
+                  >
+                    Skip (no points)
+                  </button>
+                </div>
+              )}
+
+              {/* Close button after answer revealed and someone was judged */}
+              {showAnswer && buzzedPlayer && (
                 <button
                   onClick={onClose}
                   className="w-full py-4 bg-yellow-500 hover:bg-yellow-400 text-blue-900 text-xl font-bold rounded-xl transition-colors

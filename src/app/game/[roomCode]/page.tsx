@@ -304,23 +304,29 @@ export default function GameRoom() {
 
   // Handle answer judgment (host only)
   const handleJudge = (correct: boolean) => {
-    if (!buzzedPlayer || !currentQuestion) return;
+    if (!currentQuestion) return;
+
+    // Determine who to score - buzzedPlayer or host (for self-scoring in solo play)
+    const playerToScore = buzzedPlayer || players.find(p => p.id === playerId);
+    if (!playerToScore) return;
 
     const pointChange = correct ? currentQuestion.value : -currentQuestion.value;
-    const newScore = buzzedPlayer.score + pointChange;
-    updatePlayerScore(buzzedPlayer.id, newScore);
+    const newScore = playerToScore.score + pointChange;
+    updatePlayerScore(playerToScore.id, newScore);
 
     broadcastEvent(GAME_EVENTS.ANSWER_JUDGED, {
-      playerId: buzzedPlayer.id,
+      playerId: playerToScore.id,
       correct,
       newScore,
     });
 
     if (soundEnabled) playSound(correct ? 'correct' : 'wrong');
 
-    if (correct) {
+    if (correct || !buzzedPlayer) {
+      // Close question if correct OR if self-scoring (no buzzedPlayer)
       handleCloseQuestion();
     } else {
+      // Wrong answer with buzzer - allow others to try
       resetBuzz();
       setCanBuzz(true);
       broadcastEvent(GAME_EVENTS.BUZZ_RESET, {});
