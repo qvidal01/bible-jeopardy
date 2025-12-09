@@ -1,0 +1,57 @@
+{
+  "name": "bible-jeopardy",
+  "version": "1.0.0",
+  "description": "A multiplayer Bible trivia game based on teachings from jw.org. Team-based Jeopardy-style gameplay with 20 categories.",
+  "keywords": [
+    "bible",
+    "jeopardy",
+    "trivia",
+    "game",
+    "multiplayer",
+    "jw",
+    "next.js",
+    "react"
+  ],
+  "author": "qvidal01",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qvidal01/bible-jeopardy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/qvidal01/bible-jeopardy/issues"
+  },
+  "homepage": "https://github.com/qvidal01/bible-jeopardy#readme",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "type-check": "tsc --noEmit",
+    "docker:build": "docker build -t bible-jeopardy .",
+    "docker:run": "docker run -p 3000:3000 bible-jeopardy",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down"
+  },
+  "dependencies": {
+    "next": "16.0.5",
+    "pusher": "^5.2.0",
+    "pusher-js": "^8.4.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "uuid": "^13.0.0",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/uuid": "^10.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.0.5",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

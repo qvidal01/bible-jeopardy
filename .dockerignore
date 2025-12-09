@@ -1,0 +1,52 @@
+# Docker ignore file for Bible Jeopardy
+# Excludes files not needed in production Docker image
+
+# Dependencies (will be installed in container)
+node_modules
+npm-debug.log*
+
+# Development files
+.git
+.gitignore
+.env*
+!.env.example
+
+# Build outputs
+.next
+out
+build
+dist
+
+# IDE and editor files
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation (not needed in container)
+*.md
+!README.md
+docs/
+
+# Test files
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__
+coverage
+
+# Docker files (avoid recursive builds)
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Misc
+*.log
+*.tmp
+.vercel
