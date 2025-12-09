@@ -43,4 +43,10 @@ export const GAME_EVENTS = {
   BUZZ_RESET: 'buzz-reset',
   REVEAL_ANSWER: 'reveal-answer',
   CATEGORIES_SELECTED: 'categories-selected',
+  // Host management events
+  HOST_HEARTBEAT: 'host-heartbeat',
+  HOST_DISCONNECTED: 'host-disconnected',
+  HOST_RECONNECTED: 'host-reconnected',
+  HOST_TRANSFERRED: 'host-transferred',
+  GAME_ENDED: 'game-ended',
 } as const;

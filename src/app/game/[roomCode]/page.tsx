@@ -18,6 +18,9 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import WaitingRoom from '@/components/WaitingRoom';
 import GameInstructions from '@/components/GameInstructions';
+import HostControls from '@/components/HostControls';
+import HostDisconnectedOverlay from '@/components/HostDisconnectedOverlay';
+import GameEndedOverlay from '@/components/GameEndedOverlay';
 
 export default function GameRoom() {
   const params = useParams();
@@ -33,6 +36,23 @@ export default function GameRoom() {
   const [showDailyDoubleAnswer, setShowDailyDoubleAnswer] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [isStudyMode, setIsStudyMode] = useState(false);
+
+  // Host management states
+  const [hostDisconnected, setHostDisconnected] = useState(false);
+  const [hostDisconnectedAt, setHostDisconnectedAt] = useState<number | null>(null);
+  const [hostName, setHostName] = useState('');
+  const [gameEnded, setGameEnded] = useState(false);
+  const [gameEndReason, setGameEndReason] = useState<'host-timeout' | 'host-ended' | 'inactivity'>('host-ended');
+  const [lastActivityTime, setLastActivityTime] = useState(Date.now());
+  const hostHeartbeatRef = useRef<NodeJS.Timeout | null>(null);
+  const inactivityCheckRef = useRef<NodeJS.Timeout | null>(null);
+  const lastHostHeartbeatRef = useRef<number>(Date.now());
+
+  // Constants
+  const HOST_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+  const HOST_HEARTBEAT_INTERVAL = 10 * 1000; // 10 seconds
+  const HOST_HEARTBEAT_THRESHOLD = 30 * 1000; // 30 seconds without heartbeat = disconnected
+  const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
   // Connection limit states
   const [inWaitingRoom, setInWaitingRoom] = useState(false);
@@ -215,6 +235,109 @@ export default function GameRoom() {
     }
   }, [roomCode]);
 
+  // Track activity for inactivity timeout
+  const updateActivity = useCallback(() => {
+    setLastActivityTime(Date.now());
+  }, []);
+
+  // Host heartbeat broadcast (if host)
+  useEffect(() => {
+    if (!isHost || !playerId || isStudyMode) return;
+
+    // Send heartbeat immediately
+    broadcastEvent(GAME_EVENTS.HOST_HEARTBEAT, { hostId: playerId, timestamp: Date.now() });
+
+    // Send heartbeat every 10 seconds
+    hostHeartbeatRef.current = setInterval(() => {
+      broadcastEvent(GAME_EVENTS.HOST_HEARTBEAT, { hostId: playerId, timestamp: Date.now() });
+    }, HOST_HEARTBEAT_INTERVAL);
+
+    return () => {
+      if (hostHeartbeatRef.current) {
+        clearInterval(hostHeartbeatRef.current);
+      }
+    };
+  }, [isHost, playerId, isStudyMode, broadcastEvent, HOST_HEARTBEAT_INTERVAL]);
+
+  // Non-host: Check for host heartbeat timeout
+  useEffect(() => {
+    if (isHost || !playerId || isStudyMode || status === 'lobby') return;
+
+    const checkHostHeartbeat = setInterval(() => {
+      const timeSinceLastHeartbeat = Date.now() - lastHostHeartbeatRef.current;
+
+      if (timeSinceLastHeartbeat > HOST_HEARTBEAT_THRESHOLD && !hostDisconnected && !gameEnded) {
+        // Host hasn't sent heartbeat - mark as disconnected
+        setHostDisconnected(true);
+        setHostDisconnectedAt(Date.now());
+        // Get host name from players
+        const host = players.find(p => p.isHost);
+        if (host) setHostName(host.name);
+      }
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(checkHostHeartbeat);
+  }, [isHost, playerId, isStudyMode, status, hostDisconnected, gameEnded, players, HOST_HEARTBEAT_THRESHOLD]);
+
+  // Inactivity timeout (30 minutes)
+  useEffect(() => {
+    if (!playerId || isStudyMode) return;
+
+    inactivityCheckRef.current = setInterval(() => {
+      const timeSinceActivity = Date.now() - lastActivityTime;
+
+      if (timeSinceActivity > INACTIVITY_TIMEOUT && !gameEnded) {
+        // End game due to inactivity
+        setGameEnded(true);
+        setGameEndReason('inactivity');
+        if (isHost) {
+          broadcastEvent(GAME_EVENTS.GAME_ENDED, { reason: 'inactivity' });
+        }
+      }
+    }, 60000); // Check every minute
+
+    return () => {
+      if (inactivityCheckRef.current) {
+        clearInterval(inactivityCheckRef.current);
+      }
+    };
+  }, [playerId, isStudyMode, lastActivityTime, gameEnded, isHost, broadcastEvent, INACTIVITY_TIMEOUT]);
+
+  // Handle host timeout (5 minutes)
+  const handleHostTimeout = useCallback(() => {
+    setGameEnded(true);
+    setGameEndReason('host-timeout');
+  }, []);
+
+  // Handle host reconnection
+  const handleHostReconnected = useCallback(() => {
+    setHostDisconnected(false);
+    setHostDisconnectedAt(null);
+  }, []);
+
+  // Handle end game (by host)
+  const handleEndGame = useCallback(() => {
+    setGameEnded(true);
+    setGameEndReason('host-ended');
+    broadcastEvent(GAME_EVENTS.GAME_ENDED, { reason: 'host-ended', hostName: playerName });
+  }, [broadcastEvent, playerName]);
+
+  // Handle host transfer
+  const handleTransferHost = useCallback((newHostId: string) => {
+    const newHost = players.find(p => p.id === newHostId);
+    if (!newHost) return;
+
+    // Broadcast host transfer
+    broadcastEvent(GAME_EVENTS.HOST_TRANSFERRED, {
+      oldHostId: playerId,
+      newHostId,
+      newHostName: newHost.name
+    });
+
+    // Leave the game (original host is no longer a player)
+    router.push('/');
+  }, [broadcastEvent, playerId, players, router]);
+
   // Pusher real-time subscription
   useEffect(() => {
     if (!playerId) return;
@@ -225,6 +348,7 @@ export default function GameRoom() {
     channel.bind(GAME_EVENTS.PLAYER_JOINED, (data: Player) => {
       addPlayer(data);
       if (soundEnabled) playSound('select');
+      updateActivity();
     });
 
     channel.bind(GAME_EVENTS.PLAYER_LEFT, (data: { playerId: string }) => {
@@ -272,6 +396,34 @@ export default function GameRoom() {
 
     channel.bind(GAME_EVENTS.GAME_STATE_UPDATE, (data: Record<string, unknown>) => {
       updateGameState(data as Partial<GameState>);
+      updateActivity();
+    });
+
+    // Host management events
+    channel.bind(GAME_EVENTS.HOST_HEARTBEAT, (data: { hostId: string; timestamp: number }) => {
+      lastHostHeartbeatRef.current = Date.now();
+      // If we were showing disconnect overlay, host is back
+      if (hostDisconnected) {
+        handleHostReconnected();
+      }
+    });
+
+    channel.bind(GAME_EVENTS.GAME_ENDED, (data: { reason: 'host-timeout' | 'host-ended' | 'inactivity'; hostName?: string }) => {
+      setGameEnded(true);
+      setGameEndReason(data.reason);
+      if (data.hostName) setHostName(data.hostName);
+    });
+
+    channel.bind(GAME_EVENTS.HOST_TRANSFERRED, (data: { oldHostId: string; newHostId: string; newHostName: string }) => {
+      // If I'm the new host, update my state
+      if (data.newHostId === playerId) {
+        setIsHost(true);
+        setHostId(data.newHostId);
+        sessionStorage.setItem('isHost', 'true');
+      }
+      // Update host in player list
+      updateGameState({ hostId: data.newHostId });
+      updateActivity();
     });
 
     setIsConnected(true);
@@ -280,13 +432,14 @@ export default function GameRoom() {
       channel.unbind_all();
       pusher.unsubscribe(getGameChannel(roomCode));
     };
-  }, [playerId, roomCode, soundEnabled, addPlayer, removePlayer, initializeBoard, selectQuestion, playerBuzz, updatePlayerScore, markQuestionAnswered, resetBuzz, updateGameState]);
+  }, [playerId, roomCode, soundEnabled, addPlayer, removePlayer, initializeBoard, selectQuestion, playerBuzz, updatePlayerScore, markQuestionAnswered, resetBuzz, updateGameState, updateActivity, hostDisconnected, handleHostReconnected, setHostId]);
 
   // Handle category selection and game start
   const handleStartGame = (categoryIds: string[]) => {
     initializeBoard(categoryIds);
     broadcastEvent(GAME_EVENTS.GAME_STARTED, { categoryIds });
     if (soundEnabled) playSound('select');
+    updateActivity();
   };
 
   // Handle question selection
@@ -300,6 +453,7 @@ export default function GameRoom() {
     } else if (soundEnabled) {
       playSound('select');
     }
+    updateActivity();
   };
 
   // Handle player buzz
@@ -310,6 +464,7 @@ export default function GameRoom() {
     setCanBuzz(false);
     broadcastEvent(GAME_EVENTS.PLAYER_BUZZED, { playerId, time });
     if (soundEnabled) playFeedback('buzz', 100);
+    updateActivity();
   };
 
   // Handle answer judgment (host only)
@@ -331,6 +486,7 @@ export default function GameRoom() {
     });
 
     if (soundEnabled) playSound(correct ? 'correct' : 'wrong');
+    updateActivity();
 
     if (correct || !buzzedPlayer) {
       // Close question if correct OR if self-scoring (no buzzedPlayer)
@@ -508,6 +664,16 @@ export default function GameRoom() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </a>
+              {/* Host Controls */}
+              {isHost && status !== 'lobby' && (
+                <HostControls
+                  players={players}
+                  currentPlayerId={playerId}
+                  onTransferHost={handleTransferHost}
+                  onEndGame={handleEndGame}
+                  isStudyMode={isStudyMode}
+                />
+              )}
             </div>
           </div>
         </header>
@@ -683,6 +849,21 @@ export default function GameRoom() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Host Disconnected Overlay */}
+        {hostDisconnected && hostDisconnectedAt && !gameEnded && !isHost && (
+          <HostDisconnectedOverlay
+            hostName={hostName}
+            disconnectedAt={hostDisconnectedAt}
+            timeoutDuration={HOST_TIMEOUT}
+            onTimeout={handleHostTimeout}
+          />
+        )}
+
+        {/* Game Ended Overlay */}
+        {gameEnded && (
+          <GameEndedOverlay reason={gameEndReason} hostName={hostName} />
         )}
       </div>
     </ErrorBoundary>
