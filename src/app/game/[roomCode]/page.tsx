@@ -22,6 +22,7 @@ import HostControls from '@/components/HostControls';
 import HostDisconnectedOverlay from '@/components/HostDisconnectedOverlay';
 import GameEndedOverlay from '@/components/GameEndedOverlay';
 import InvitePanel from '@/components/InvitePanel';
+import BuzzNotification from '@/components/BuzzNotification';
 
 export default function GameRoom() {
   const params = useParams();
@@ -37,6 +38,8 @@ export default function GameRoom() {
   const [showDailyDoubleAnswer, setShowDailyDoubleAnswer] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [isStudyMode, setIsStudyMode] = useState(false);
+  const [showBuzzNotification, setShowBuzzNotification] = useState(false);
+  const [buzzedPlayerName, setBuzzedPlayerName] = useState('');
 
   // Host management states
   const [hostDisconnected, setHostDisconnected] = useState(false);
@@ -211,6 +214,17 @@ export default function GameRoom() {
         };
         addPlayer(player);
 
+        // Broadcast to other players that we joined
+        fetch('/api/game/broadcast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            roomCode,
+            event: 'player-joined',
+            data: player,
+          }),
+        }).catch((err) => console.error('Failed to broadcast join:', err));
+
         // Start heartbeat ping every 30 seconds
         pingIntervalRef.current = setInterval(() => {
           fetch('/api/connections', {
@@ -373,6 +387,13 @@ export default function GameRoom() {
       playerBuzz(data.playerId, data.time);
       setCanBuzz(false);
       if (soundEnabled) playSound('buzz');
+
+      // Show buzz notification for host
+      const buzzedPlayer = players.find(p => p.id === data.playerId);
+      if (buzzedPlayer) {
+        setBuzzedPlayerName(buzzedPlayer.name);
+        setShowBuzzNotification(true);
+      }
     });
 
     channel.bind(GAME_EVENTS.ANSWER_JUDGED, (data: { playerId: string; correct: boolean; newScore: number }) => {
@@ -433,7 +454,7 @@ export default function GameRoom() {
       channel.unbind_all();
       pusher.unsubscribe(getGameChannel(roomCode));
     };
-  }, [playerId, roomCode, soundEnabled, addPlayer, removePlayer, initializeBoard, selectQuestion, playerBuzz, updatePlayerScore, markQuestionAnswered, resetBuzz, updateGameState, updateActivity, hostDisconnected, handleHostReconnected, setHostId]);
+  }, [playerId, roomCode, soundEnabled, addPlayer, removePlayer, initializeBoard, selectQuestion, playerBuzz, updatePlayerScore, markQuestionAnswered, resetBuzz, updateGameState, updateActivity, hostDisconnected, handleHostReconnected, setHostId, players]);
 
   // Handle category selection and game start
   const handleStartGame = (categoryIds: string[]) => {
@@ -869,6 +890,15 @@ export default function GameRoom() {
         {/* Game Ended Overlay */}
         {gameEnded && (
           <GameEndedOverlay reason={gameEndReason} hostName={hostName} />
+        )}
+
+        {/* Buzz Notification for Host */}
+        {showBuzzNotification && isHost && buzzedPlayerName && (
+          <BuzzNotification
+            playerName={buzzedPlayerName}
+            onDismiss={() => setShowBuzzNotification(false)}
+            autoDismissMs={4000}
+          />
         )}
       </div>
     </ErrorBoundary>
