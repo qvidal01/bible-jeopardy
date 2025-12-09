@@ -49,4 +49,7 @@ export const GAME_EVENTS = {
   HOST_RECONNECTED: 'host-reconnected',
   HOST_TRANSFERRED: 'host-transferred',
   GAME_ENDED: 'game-ended',
+  // State sync for late joiners
+  REQUEST_STATE_SYNC: 'request-state-sync',
+  STATE_SYNC: 'state-sync',
 } as const;

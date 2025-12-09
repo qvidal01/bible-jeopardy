@@ -364,6 +364,28 @@ export default function GameRoom() {
       addPlayer(data);
       if (soundEnabled) playSound('select');
       updateActivity();
+
+      // Host: broadcast current game state to sync the new player
+      if (isHost && status !== 'lobby') {
+        setTimeout(() => {
+          fetch('/api/game/broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              roomCode,
+              event: GAME_EVENTS.STATE_SYNC,
+              data: {
+                status,
+                board,
+                round,
+                players,
+                isTeamMode,
+                teams,
+              },
+            }),
+          }).catch((err) => console.error('Failed to sync state:', err));
+        }, 500); // Small delay to ensure new player is subscribed
+      }
     });
 
     channel.bind(GAME_EVENTS.PLAYER_LEFT, (data: { playerId: string }) => {
@@ -448,13 +470,45 @@ export default function GameRoom() {
       updateActivity();
     });
 
+    // State sync for late joiners
+    channel.bind(GAME_EVENTS.STATE_SYNC, (data: {
+      status: string;
+      board: typeof board;
+      round: number;
+      players: typeof players;
+      isTeamMode: boolean;
+      teams: typeof teams;
+    }) => {
+      // Only sync if we're in lobby (meaning we just joined)
+      if (status === 'lobby' && !isHost) {
+        console.log('Syncing game state from host:', data.status);
+        setStatus(data.status as typeof status);
+        if (data.board) {
+          setBoard(data.board);
+        }
+        if (data.round === 1 || data.round === 2) {
+          setRound(data.round);
+        }
+        // Sync players
+        data.players?.forEach((p: Player) => {
+          if (p.id !== playerId) {
+            addPlayer(p);
+          }
+        });
+        // Sync team mode
+        if (data.isTeamMode) {
+          enableTeamMode();
+        }
+      }
+    });
+
     setIsConnected(true);
 
     return () => {
       channel.unbind_all();
       pusher.unsubscribe(getGameChannel(roomCode));
     };
-  }, [playerId, roomCode, soundEnabled, addPlayer, removePlayer, initializeBoard, selectQuestion, playerBuzz, updatePlayerScore, markQuestionAnswered, resetBuzz, updateGameState, updateActivity, hostDisconnected, handleHostReconnected, setHostId, players]);
+  }, [playerId, roomCode, soundEnabled, addPlayer, removePlayer, initializeBoard, selectQuestion, playerBuzz, updatePlayerScore, markQuestionAnswered, resetBuzz, updateGameState, updateActivity, hostDisconnected, handleHostReconnected, setHostId, players, isHost, status, board, round, isTeamMode, teams, setStatus, setBoard, setRound, enableTeamMode]);
 
   // Handle category selection and game start
   const handleStartGame = (categoryIds: string[]) => {
