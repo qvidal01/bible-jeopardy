@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { Question, Player } from '@/types/game';
 import Timer from './Timer';
-import { playFeedback } from '@/lib/sounds';
+import { playFeedback, playDramaticBuzz } from '@/lib/sounds';
 import { useTimerDuration, useSoundEnabled } from '@/lib/gameStore';
 
 interface QuestionModalProps {
@@ -39,6 +39,25 @@ export default function QuestionModal({
   const timerDuration = useTimerDuration();
   const soundEnabled = useSoundEnabled();
 
+  // State for dramatic buzz overlay
+  const [showBuzzOverlay, setShowBuzzOverlay] = useState(false);
+  const previousBuzzedPlayer = useRef<Player | null>(null);
+
+  // Show dramatic overlay when someone buzzes
+  useEffect(() => {
+    if (buzzedPlayer && buzzedPlayer.id !== previousBuzzedPlayer.current?.id) {
+      setShowBuzzOverlay(true);
+      previousBuzzedPlayer.current = buzzedPlayer;
+
+      // Hide overlay after 2 seconds
+      const timer = setTimeout(() => {
+        setShowBuzzOverlay(false);
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [buzzedPlayer]);
+
   // Keyboard navigation - Spacebar to buzz
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -54,7 +73,7 @@ export default function QuestionModal({
 
   const handleBuzz = useCallback(() => {
     if (soundEnabled) {
-      playFeedback('buzz', 100);
+      playDramaticBuzz();
     }
     onBuzz();
   }, [onBuzz, soundEnabled]);
@@ -77,12 +96,48 @@ export default function QuestionModal({
   const firstBuzzTime = buzzOrder.length > 0 ? buzzOrder[0].time : 0;
 
   return (
-    <div
-      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="question-title"
-    >
+    <>
+      {/* Full-screen dramatic buzz overlay */}
+      {showBuzzOverlay && buzzedPlayer && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none"
+          role="alert"
+          aria-live="assertive"
+        >
+          {/* Animated background flashes */}
+          <div className="absolute inset-0 animate-buzz-flash" />
+
+          {/* Main content */}
+          <div className="relative text-center animate-buzz-scale">
+            {/* Glowing ring effect */}
+            <div className="absolute inset-0 -m-8 rounded-full bg-yellow-400/30 blur-3xl animate-pulse" />
+
+            {/* Player name */}
+            <div className="relative">
+              <p className="text-2xl md:text-3xl text-yellow-400 font-bold mb-2 animate-bounce">
+                🔔 BUZZED IN! 🔔
+              </p>
+              <h2 className="text-6xl md:text-8xl lg:text-9xl font-black text-white
+                           drop-shadow-[0_0_30px_rgba(234,179,8,0.8)]
+                           animate-pulse">
+                {buzzedPlayer.name.toUpperCase()}
+              </h2>
+              <div className="mt-4 flex justify-center gap-2">
+                <span className="text-4xl animate-bounce" style={{ animationDelay: '0ms' }}>⚡</span>
+                <span className="text-4xl animate-bounce" style={{ animationDelay: '100ms' }}>⚡</span>
+                <span className="text-4xl animate-bounce" style={{ animationDelay: '200ms' }}>⚡</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div
+        className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="question-title"
+      >
       <div className="bg-blue-900 rounded-2xl max-w-4xl w-full shadow-2xl border-4 border-yellow-500 overflow-hidden">
         {/* Header */}
         <div className="bg-blue-800 px-6 py-4 flex justify-between items-center">
@@ -292,6 +347,7 @@ export default function QuestionModal({
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

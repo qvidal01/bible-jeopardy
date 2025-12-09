@@ -24,3 +24,42 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Custom buzz animations */
+@keyframes buzz-flash {
+  0%, 100% {
+    background: rgba(234, 179, 8, 0.9);
+  }
+  25% {
+    background: rgba(239, 68, 68, 0.9);
+  }
+  50% {
+    background: rgba(234, 179, 8, 0.9);
+  }
+  75% {
+    background: rgba(249, 115, 22, 0.9);
+  }
+}
+
+@keyframes buzz-scale {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-buzz-flash {
+  animation: buzz-flash 0.3s ease-in-out infinite;
+}
+
+.animate-buzz-scale {
+  animation: buzz-scale 0.4s ease-out forwards;
+}

@@ -34,17 +34,33 @@ export function initSounds(): void {
 }
 
 // Play a sound effect
-export function playSound(name: SoundName): void {
+export function playSound(name: SoundName, volumeOverride?: number): void {
   if (typeof window === 'undefined' || !soundEnabled) return;
 
   const audio = audioCache[name];
   if (audio) {
     audio.currentTime = 0;
-    audio.volume = volume;
+    // Use override if provided, otherwise use global volume
+    // Buzz sound is always louder (1.0 max)
+    const effectiveVolume = volumeOverride !== undefined
+      ? volumeOverride
+      : (name === 'buzz' ? 1.0 : volume);
+    audio.volume = Math.min(1, effectiveVolume);
     audio.play().catch(() => {
       // Ignore autoplay restrictions
     });
   }
+}
+
+// Play buzz sound with dramatic effect (multiple times for emphasis)
+export function playDramaticBuzz(): void {
+  if (typeof window === 'undefined' || !soundEnabled) return;
+
+  // Play main buzz at full volume
+  playSound('buzz', 1.0);
+
+  // Vibrate longer for dramatic effect
+  vibrate(200);
 }
 
 // Toggle sound on/off
