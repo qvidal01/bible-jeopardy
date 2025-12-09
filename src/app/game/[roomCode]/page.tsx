@@ -494,7 +494,10 @@ export default function GameRoom() {
               roomCode={roomCode}
               players={players}
               isHost={isHost}
-              onStartCategorySelect={() => setStatus('category-select')}
+              onStartCategorySelect={() => {
+                setStatus('category-select');
+                broadcastEvent(GAME_EVENTS.GAME_STATE_UPDATE, { status: 'category-select' });
+              }}
             />
           )}
 
@@ -502,7 +505,10 @@ export default function GameRoom() {
           {status === 'category-select' && isHost && (
             <CategorySelector
               onStartGame={handleStartGame}
-              onCancel={() => setStatus('lobby')}
+              onCancel={() => {
+                setStatus('lobby');
+                broadcastEvent(GAME_EVENTS.GAME_STATE_UPDATE, { status: 'lobby' });
+              }}
             />
           )}
 
