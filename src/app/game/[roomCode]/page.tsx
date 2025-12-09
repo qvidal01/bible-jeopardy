@@ -21,6 +21,7 @@ import GameInstructions from '@/components/GameInstructions';
 import HostControls from '@/components/HostControls';
 import HostDisconnectedOverlay from '@/components/HostDisconnectedOverlay';
 import GameEndedOverlay from '@/components/GameEndedOverlay';
+import InvitePanel from '@/components/InvitePanel';
 
 export default function GameRoom() {
   const params = useParams();
@@ -730,9 +731,13 @@ export default function GameRoom() {
                 />
               </div>
 
-              {/* Sidebar - Scoreboard & Instructions */}
+              {/* Sidebar - Scoreboard, Invite & Instructions */}
               <div className="lg:col-span-1 space-y-4">
                 <Scoreboard players={players} hostId={hostId} teams={teams} isTeamMode={isTeamMode} />
+                {/* Invite Panel - show for host when not in study mode */}
+                {isHost && !isStudyMode && (
+                  <InvitePanel roomCode={roomCode} compact={true} />
+                )}
                 <GameInstructions isHost={isHost} isTeamMode={isTeamMode} compact={true} />
               </div>
             </div>
