@@ -36,7 +36,6 @@ export default function Home() {
   const [roomDescription, setRoomDescription] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
   const [maxPlayers, setMaxPlayers] = useState(10);
-  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Game mode selection
   const [gameMode, setGameMode] = useState<'individual' | 'team'>('individual');
@@ -197,7 +196,7 @@ export default function Home() {
     <ErrorBoundary>
       <div className="min-h-screen bg-gradient-to-b from-blue-900 via-blue-800 to-blue-900 flex flex-col items-center justify-center p-4">
         {/* Title */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <h1
             className="text-5xl md:text-7xl font-bold text-yellow-400 mb-4 tracking-wide"
             style={{ textShadow: '3px 3px 0 #1e3a5f, 6px 6px 0 rgba(0,0,0,0.3)' }}
@@ -210,8 +209,10 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Main Card */}
-        <div className="bg-blue-950/80 backdrop-blur-sm rounded-2xl p-8 w-full max-w-md shadow-2xl border border-blue-700/50">
+        {/* Main Content - Two Column Layout on Desktop */}
+        <div className="flex flex-col lg:flex-row gap-6 w-full max-w-5xl items-start justify-center">
+          {/* Left Side - Form */}
+          <div className="bg-blue-950/80 backdrop-blur-sm rounded-2xl p-8 w-full max-w-md shadow-2xl border border-blue-700/50">
           {isLoading ? (
             <LoadingSpinner message="Setting up game..." />
           ) : (
@@ -363,113 +364,72 @@ export default function Home() {
                     </div>
                   )}
 
-                  {/* Advanced Options Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvanced(!showAdvanced)}
-                    className="w-full text-left text-blue-300 text-sm flex items-center gap-2 hover:text-blue-200"
-                  >
-                    <svg
-                      className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                    Advanced Options (Zoom link, privacy, etc.)
-                  </button>
+                  {/* Video Call Link */}
+                  <div>
+                    <label htmlFor="zoom-link" className="block text-blue-200 mb-2 text-sm font-medium">
+                      Video Call Link (optional)
+                    </label>
+                    <input
+                      id="zoom-link"
+                      type="url"
+                      value={zoomLink}
+                      onChange={(e) => setZoomLink(e.target.value)}
+                      placeholder="Zoom, Meet, or Teams link"
+                      className="w-full px-3 py-2 rounded-lg bg-blue-900/50 border border-blue-600 text-white text-sm
+                                 placeholder-blue-500 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    />
+                  </div>
 
-                  {showAdvanced && (
-                    <div className="space-y-4 p-4 bg-blue-900/30 rounded-lg border border-blue-700">
-                      {/* Zoom/Meet Link */}
-                      <div>
-                        <label htmlFor="zoom-link" className="block text-blue-200 mb-2 text-sm">
-                          Video Call Link (Zoom, Meet, Teams)
-                        </label>
-                        <input
-                          id="zoom-link"
-                          type="url"
-                          value={zoomLink}
-                          onChange={(e) => setZoomLink(e.target.value)}
-                          placeholder="https://zoom.us/j/123456789"
-                          className="w-full px-3 py-2 rounded-lg bg-blue-900/50 border border-blue-600 text-white text-sm
-                                     placeholder-blue-500 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                        />
-                      </div>
-
-                      {/* Zoom Password */}
-                      {zoomLink && (
-                        <div>
-                          <label htmlFor="zoom-password" className="block text-blue-200 mb-2 text-sm">
-                            Meeting Password (optional)
-                          </label>
-                          <input
-                            id="zoom-password"
-                            type="text"
-                            value={zoomPassword}
-                            onChange={(e) => setZoomPassword(e.target.value)}
-                            placeholder="Meeting password"
-                            className="w-full px-3 py-2 rounded-lg bg-blue-900/50 border border-blue-600 text-white text-sm
-                                       placeholder-blue-500 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                            maxLength={20}
-                          />
-                        </div>
-                      )}
-
-                      {/* Room Description */}
-                      <div>
-                        <label htmlFor="room-desc" className="block text-blue-200 mb-2 text-sm">
-                          Description (shown in public rooms)
-                        </label>
-                        <textarea
-                          id="room-desc"
-                          value={roomDescription}
-                          onChange={(e) => setRoomDescription(e.target.value)}
-                          placeholder="Family game night - all ages welcome!"
-                          className="w-full px-3 py-2 rounded-lg bg-blue-900/50 border border-blue-600 text-white text-sm
-                                     placeholder-blue-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 resize-none"
-                          rows={2}
-                          maxLength={200}
-                        />
-                      </div>
-
-                      {/* Max Players */}
-                      <div>
-                        <label htmlFor="max-players" className="block text-blue-200 mb-2 text-sm">
-                          Max Players: {maxPlayers}
-                        </label>
-                        <input
-                          id="max-players"
-                          type="range"
-                          min={2}
-                          max={15}
-                          value={maxPlayers}
-                          onChange={(e) => setMaxPlayers(parseInt(e.target.value))}
-                          className="w-full accent-yellow-500"
-                        />
-                        <div className="flex justify-between text-xs text-blue-500">
-                          <span>2</span>
-                          <span>15</span>
-                        </div>
-                      </div>
-
-                      {/* Private Room Toggle */}
-                      <div className="flex items-center gap-3">
-                        <input
-                          id="private-room"
-                          type="checkbox"
-                          checked={isPrivate}
-                          onChange={(e) => setIsPrivate(e.target.checked)}
-                          className="w-5 h-5 rounded bg-blue-900 border-blue-600 text-yellow-500
-                                     focus:ring-yellow-400 focus:ring-2"
-                        />
-                        <label htmlFor="private-room" className="text-blue-300 text-sm">
-                          Private room (won&apos;t appear in public list)
-                        </label>
-                      </div>
+                  {/* Zoom Password - only show if zoom link exists */}
+                  {zoomLink && (
+                    <div>
+                      <label htmlFor="zoom-password" className="block text-blue-200 mb-2 text-sm">
+                        Meeting Password
+                      </label>
+                      <input
+                        id="zoom-password"
+                        type="text"
+                        value={zoomPassword}
+                        onChange={(e) => setZoomPassword(e.target.value)}
+                        placeholder="Optional password"
+                        className="w-full px-3 py-2 rounded-lg bg-blue-900/50 border border-blue-600 text-white text-sm
+                                   placeholder-blue-500 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                        maxLength={20}
+                      />
                     </div>
                   )}
+
+                  {/* Room Settings Row */}
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="private-room"
+                        type="checkbox"
+                        checked={isPrivate}
+                        onChange={(e) => setIsPrivate(e.target.checked)}
+                        className="w-4 h-4 rounded bg-blue-900 border-blue-600 text-yellow-500
+                                   focus:ring-yellow-400 focus:ring-2"
+                      />
+                      <label htmlFor="private-room" className="text-blue-300 text-sm">
+                        Private room
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-2 flex-1">
+                      <label htmlFor="max-players" className="text-blue-300 text-sm whitespace-nowrap">
+                        Max players:
+                      </label>
+                      <input
+                        id="max-players"
+                        type="number"
+                        min={2}
+                        max={15}
+                        value={maxPlayers}
+                        onChange={(e) => setMaxPlayers(parseInt(e.target.value) || 10)}
+                        className="w-16 px-2 py-1 rounded bg-blue-900/50 border border-blue-600 text-white text-sm
+                                   focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                      />
+                    </div>
+                  </div>
 
                   {error && (
                     <p className="text-red-400 text-sm" role="alert">
@@ -482,7 +442,6 @@ export default function Home() {
                       onClick={() => {
                         setMode('menu');
                         setError('');
-                        setShowAdvanced(false);
                       }}
                       className="flex-1 py-3 px-4 bg-blue-800 hover:bg-blue-700 text-white font-semibold rounded-lg
                                  transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -672,8 +631,77 @@ export default function Home() {
           )}
         </div>
 
-        {/* Features */}
-        <div className="mt-8 max-w-md text-center">
+          {/* Right Side - Game Preview (Desktop Only) */}
+          <div className="hidden lg:block w-full max-w-md">
+            <div className="bg-blue-950/80 backdrop-blur-sm rounded-2xl p-4 shadow-2xl border border-blue-700/50">
+              <h3 className="text-yellow-400 font-bold text-center mb-3">Game Preview</h3>
+
+              {/* Mini Game Board Mockup */}
+              <div className="bg-blue-900/60 rounded-lg p-2 mb-3">
+                <div className="grid grid-cols-5 gap-1 text-center">
+                  {/* Category Headers */}
+                  {['BIBLE', 'KINGS', 'PROPHETS', 'PSALMS', 'JESUS'].map((cat) => (
+                    <div key={cat} className="bg-blue-800 text-yellow-400 text-[8px] font-bold py-1 px-0.5 rounded truncate">
+                      {cat}
+                    </div>
+                  ))}
+                  {/* Question Values */}
+                  {[200, 400, 600, 800, 1000].map((value) =>
+                    Array(5).fill(null).map((_, i) => (
+                      <div
+                        key={`${value}-${i}`}
+                        className={`text-yellow-400 text-[10px] font-bold py-1.5 rounded ${
+                          Math.random() > 0.7 ? 'bg-blue-950/50 text-blue-700' : 'bg-blue-700 hover:bg-blue-600'
+                        }`}
+                      >
+                        ${value}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Features List */}
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2 text-blue-200">
+                  <span className="text-yellow-400 text-lg">DD</span>
+                  <span>Daily Doubles with custom wagers</span>
+                </div>
+                <div className="flex items-center gap-2 text-blue-200">
+                  <span className="text-purple-400 text-lg">FJ</span>
+                  <span>Final Jeopardy round</span>
+                </div>
+                <div className="flex items-center gap-2 text-blue-200">
+                  <span className="text-green-400 text-lg">R2</span>
+                  <span>Double Jeopardy (2x points)</span>
+                </div>
+                <div className="flex items-center gap-2 text-blue-200">
+                  <span className="text-red-400 text-lg">VS</span>
+                  <span>Team mode: Red vs Blue</span>
+                </div>
+              </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-2 mt-4 text-center">
+                <div className="bg-blue-900/40 rounded-lg p-2 border border-blue-700/50">
+                  <span className="text-yellow-400 font-bold block">20</span>
+                  <span className="text-blue-300 text-xs">Categories</span>
+                </div>
+                <div className="bg-blue-900/40 rounded-lg p-2 border border-blue-700/50">
+                  <span className="text-yellow-400 font-bold block">100+</span>
+                  <span className="text-blue-300 text-xs">Questions</span>
+                </div>
+                <div className="bg-blue-900/40 rounded-lg p-2 border border-blue-700/50">
+                  <span className="text-yellow-400 font-bold block">Live</span>
+                  <span className="text-blue-300 text-xs">Multiplayer</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Features - Mobile Only */}
+        <div className="mt-8 max-w-md text-center lg:hidden">
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div className="bg-blue-900/40 rounded-lg p-3 border border-blue-700/50">
               <span className="text-yellow-400 font-bold block">20</span>
