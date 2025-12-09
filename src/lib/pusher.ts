@@ -34,9 +34,12 @@ export const getGameChannel = (roomCode: string) => `presence-game-${roomCode}`;
 export const GAME_EVENTS = {
   PLAYER_JOINED: 'player-joined',
   PLAYER_LEFT: 'player-left',
+  TEAM_JOINED: 'team-joined',
+  TEAM_NAME_CHANGED: 'team-name-changed',
   GAME_STARTED: 'game-started',
   QUESTION_SELECTED: 'question-selected',
   PLAYER_BUZZED: 'player-buzzed',
+  TEAM_BUZZED: 'team-buzzed',
   ANSWER_JUDGED: 'answer-judged',
   QUESTION_CLOSED: 'question-closed',
   GAME_STATE_UPDATE: 'game-state-update',
