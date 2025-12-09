@@ -1,126 +1,100 @@
-// Input validation utilities for Bible Jeopardy
+// Input validation schemas using Zod
+import { z } from 'zod';
 
-/**
- * Validation constants
- */
-export const VALIDATION = {
-  PLAYER_NAME: {
-    MIN_LENGTH: 1,
-    MAX_LENGTH: 20,
-  },
-  TEAM_NAME: {
-    MIN_LENGTH: 1,
-    MAX_LENGTH: 20,
-  },
-  ROOM_CODE: {
-    LENGTH: 6,
-    PATTERN: /^[A-Z0-9]{6}$/,
-  },
-} as const;
+// Player name validation
+export const playerNameSchema = z
+  .string()
+  .min(1, 'Name is required')
+  .max(20, 'Name must be 20 characters or less')
+  .transform((name) => name.trim().replace(/[<>]/g, ''));
 
-/**
- * Sanitize string input to prevent XSS
- */
-export function sanitizeInput(input: string): string {
-  return input
-    .replace(/[<>]/g, '') // Remove angle brackets
-    .replace(/javascript:/gi, '') // Remove javascript: protocol
-    .replace(/on\w+=/gi, '') // Remove event handlers
-    .trim();
+// Room code validation
+export const roomCodeSchema = z
+  .string()
+  .length(6, 'Room code must be 6 characters')
+  .regex(/^[A-Z0-9]+$/, 'Room code must be uppercase letters and numbers')
+  .transform((code) => code.toUpperCase());
+
+// Join game validation
+export const joinGameSchema = z.object({
+  playerName: playerNameSchema,
+  roomCode: roomCodeSchema,
+});
+
+// URL validation for Zoom/Meet links
+export const meetingLinkSchema = z
+  .string()
+  .url('Invalid URL format')
+  .refine(
+    (url) => {
+      const validDomains = [
+        'zoom.us',
+        'meet.google.com',
+        'teams.microsoft.com',
+        'webex.com',
+        'discord.gg',
+        'discord.com',
+      ];
+      try {
+        const urlObj = new URL(url);
+        return validDomains.some(domain => urlObj.hostname.includes(domain));
+      } catch {
+        return false;
+      }
+    },
+    { message: 'Link must be from Zoom, Google Meet, Teams, WebEx, or Discord' }
+  )
+  .optional()
+  .or(z.literal(''));
+
+// Room name validation
+export const roomNameSchema = z
+  .string()
+  .max(50, 'Room name must be 50 characters or less')
+  .transform((name) => name.trim().replace(/[<>]/g, ''))
+  .optional();
+
+// Room description validation
+export const roomDescriptionSchema = z
+  .string()
+  .max(200, 'Description must be 200 characters or less')
+  .transform((desc) => desc.trim().replace(/[<>]/g, ''))
+  .optional();
+
+// Create game validation (enhanced with room options)
+export const createGameSchema = z.object({
+  playerName: playerNameSchema,
+  roomName: roomNameSchema,
+  zoomLink: meetingLinkSchema,
+  zoomPassword: z.string().max(20).optional(),
+  description: roomDescriptionSchema,
+  isPrivate: z.boolean().optional().default(false),
+  maxPlayers: z.number().int().min(2).max(15).optional().default(10),
+});
+
+// Broadcast event validation
+export const broadcastEventSchema = z.object({
+  roomCode: roomCodeSchema,
+  event: z.string().min(1),
+  data: z.unknown(),
+});
+
+// Validate and sanitize player name
+export function sanitizePlayerName(name: string): string {
+  const result = playerNameSchema.safeParse(name);
+  return result.success ? result.data : name.slice(0, 20).trim().replace(/[<>]/g, '');
 }
 
-/**
- * Validate player name
- */
-export function validatePlayerName(name: string): {
-  valid: boolean;
-  error?: string;
-} {
-  const sanitized = sanitizeInput(name);
-
-  if (!sanitized) {
-    return { valid: false, error: 'Please enter your name' };
-  }
-
-  if (sanitized.length < VALIDATION.PLAYER_NAME.MIN_LENGTH) {
-    return { valid: false, error: 'Name is too short' };
-  }
-
-  if (sanitized.length > VALIDATION.PLAYER_NAME.MAX_LENGTH) {
-    return {
-      valid: false,
-      error: `Name must be ${VALIDATION.PLAYER_NAME.MAX_LENGTH} characters or less`,
-    };
-  }
-
-  return { valid: true };
+// Validate room code format
+export function isValidRoomCode(code: string): boolean {
+  return roomCodeSchema.safeParse(code).success;
 }
 
-/**
- * Validate team name
- */
-export function validateTeamName(name: string): {
-  valid: boolean;
-  error?: string;
-} {
-  const sanitized = sanitizeInput(name);
-
-  if (!sanitized) {
-    return { valid: false, error: 'Please enter a team name' };
-  }
-
-  if (sanitized.length > VALIDATION.TEAM_NAME.MAX_LENGTH) {
-    return {
-      valid: false,
-      error: `Team name must be ${VALIDATION.TEAM_NAME.MAX_LENGTH} characters or less`,
-    };
-  }
-
-  return { valid: true };
-}
-
-/**
- * Validate room code
- */
-export function validateRoomCode(code: string): {
-  valid: boolean;
-  error?: string;
-} {
-  const normalized = code.toUpperCase().trim();
-
-  if (!normalized) {
-    return { valid: false, error: 'Please enter the room code' };
-  }
-
-  if (normalized.length !== VALIDATION.ROOM_CODE.LENGTH) {
-    return { valid: false, error: 'Room code must be 6 characters' };
-  }
-
-  if (!VALIDATION.ROOM_CODE.PATTERN.test(normalized)) {
-    return { valid: false, error: 'Room code can only contain letters and numbers' };
-  }
-
-  return { valid: true };
-}
-
-/**
- * Normalize room code to uppercase
- */
-export function normalizeRoomCode(code: string): string {
-  return code.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
-}
-
-/**
- * Check if storage is available
- */
-export function isStorageAvailable(type: 'localStorage' | 'sessionStorage'): boolean {
-  try {
-    const storage = window[type];
-    const x = '__storage_test__';
-    storage.setItem(x, x);
-    storage.removeItem(x);
-    return true;
-  } catch {
-    return false;
-  }
-}
+// Wager validation for Final Jeopardy
+export const wagerSchema = z.object({
+  playerId: z.string().uuid(),
+  amount: z.number().int().min(0),
+  maxAmount: z.number().int().min(0),
+}).refine((data) => data.amount <= data.maxAmount, {
+  message: 'Wager cannot exceed your current score',
+});

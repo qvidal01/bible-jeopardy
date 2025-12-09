@@ -1,7 +1,18 @@
-// Zustand store for Bible Team Jeopardy game state
+// Zustand store for game state management
 import { create } from 'zustand';
-import { GameState, Player, Team, Question, GameBoard, Category } from '@/types/game';
-import { getQuestionsForCategory, CATEGORY_DEFINITIONS } from '@/data/categories';
+import { subscribeWithSelector } from 'zustand/middleware';
+import {
+  GameState,
+  GameStatus,
+  Player,
+  Question,
+  GameBoard,
+  Category,
+  Team,
+  DailyDoubleState,
+  FinalJeopardyState,
+} from '@/types/game';
+import { getQuestionsForCategory, CATEGORY_DEFINITIONS, FINAL_JEOPARDY_QUESTIONS } from '@/data/categories';
 
 interface GameStore extends GameState {
   // Actions
@@ -9,226 +20,453 @@ interface GameStore extends GameState {
   setHostId: (id: string) => void;
   addPlayer: (player: Player) => void;
   removePlayer: (playerId: string) => void;
-  joinTeam: (playerId: string, teamId: 'red' | 'blue') => void;
-  setTeamName: (teamId: 'red' | 'blue', name: string) => void;
-  updateTeamScore: (teamId: 'red' | 'blue', score: number) => void;
-  setStatus: (status: GameState['status']) => void;
+  updatePlayerScore: (playerId: string, score: number) => void;
+  setStatus: (status: GameStatus) => void;
   setBoard: (board: GameBoard) => void;
   selectQuestion: (question: Question) => void;
-  teamBuzz: (playerId: string, teamId: 'red' | 'blue', time: number) => void;
+  playerBuzz: (playerId: string, time: number) => void;
   resetBuzz: () => void;
-  markQuestionAnswered: (questionId: string, correctTeam?: 'red' | 'blue' | null) => void;
+  markQuestionAnswered: (questionId: string, answeredBy?: string) => void;
   setSelectedCategories: (categories: string[]) => void;
   initializeBoard: (categoryIds: string[]) => void;
-  setCurrentTurn: (teamId: 'red' | 'blue') => void;
   resetGame: () => void;
   updateGameState: (state: Partial<GameState>) => void;
+  // Round management
+  setRound: (round: 1 | 2) => void;
+  startDoubleJeopardy: () => void;
+  // Daily Double
+  triggerDailyDouble: (question: Question, playerId: string) => void;
+  setDailyDoubleWager: (wager: number) => void;
+  resolveDailyDouble: (correct: boolean) => void;
+  // Final Jeopardy
+  startFinalJeopardy: () => void;
+  setFinalJeopardyWager: (playerId: string, wager: number) => void;
+  setFinalJeopardyAnswer: (playerId: string, answer: string) => void;
+  revealFinalJeopardy: () => void;
+  judgeFinalJeopardy: (playerId: string, correct: boolean) => void;
+  // Team mode
+  enableTeamMode: () => void;
+  disableTeamMode: () => void;
+  createTeam: (name: string, color: string) => Team;
+  joinTeam: (playerId: string, teamId: string) => void;
+  leaveTeam: (playerId: string) => void;
+  updateTeamScore: (teamId: string, score: number) => void;
+  // Spectator mode
+  setSpectator: (playerId: string, isSpectator: boolean) => void;
+  // Settings
+  setTimerDuration: (duration: number) => void;
+  setSoundEnabled: (enabled: boolean) => void;
 }
-
-const createInitialTeam = (id: 'red' | 'blue', name: string): Team => ({
-  id,
-  name,
-  score: 0,
-  players: [],
-  color: id,
-});
 
 const initialState: Omit<GameState, 'updateGameState'> = {
   roomCode: '',
   status: 'lobby',
   players: [],
-  teams: {
-    red: createInitialTeam('red', 'Red Team'),
-    blue: createInitialTeam('blue', 'Blue Team'),
-  },
   hostId: '',
   board: null,
   currentQuestion: null,
-  buzzedTeam: null,
   buzzedPlayer: null,
   buzzOrder: [],
   round: 1,
   selectedCategories: [],
-  currentTurn: 'red',
-  lastCorrectTeam: null,
+  isTeamMode: false,
+  teams: [],
+  dailyDoubleState: null,
+  finalJeopardy: null,
+  timerDuration: 30,
+  soundEnabled: true,
 };
 
-export const useGameStore = create<GameStore>((set, get) => ({
-  ...initialState,
-
-  setRoomCode: (code) => set({ roomCode: code }),
-
-  setHostId: (id) => set({ hostId: id }),
-
-  addPlayer: (player) => set((state) => ({
-    players: [...state.players.filter(p => p.id !== player.id), player]
-  })),
-
-  removePlayer: (playerId) => set((state) => {
-    const player = state.players.find(p => p.id === playerId);
-    const newPlayers = state.players.filter(p => p.id !== playerId);
-
-    // Remove from team if assigned
-    const newTeams = { ...state.teams };
-    if (player?.teamId) {
-      newTeams[player.teamId] = {
-        ...newTeams[player.teamId],
-        players: newTeams[player.teamId].players.filter(id => id !== playerId)
-      };
-    }
-
-    return { players: newPlayers, teams: newTeams };
-  }),
-
-  joinTeam: (playerId, teamId) => set((state) => {
-    const player = state.players.find(p => p.id === playerId);
-    if (!player) return state;
-
-    // Remove from previous team if any
-    const newTeams = { ...state.teams };
-    if (player.teamId && player.teamId !== teamId) {
-      newTeams[player.teamId] = {
-        ...newTeams[player.teamId],
-        players: newTeams[player.teamId].players.filter(id => id !== playerId)
-      };
-    }
-
-    // Add to new team
-    if (!newTeams[teamId].players.includes(playerId)) {
-      newTeams[teamId] = {
-        ...newTeams[teamId],
-        players: [...newTeams[teamId].players, playerId]
-      };
-    }
-
-    // Update player's teamId
-    const newPlayers = state.players.map(p =>
-      p.id === playerId ? { ...p, teamId, isCaptain: false } : p
-    );
-
-    return { players: newPlayers, teams: newTeams };
-  }),
-
-  setTeamName: (teamId, name) => set((state) => ({
-    teams: {
-      ...state.teams,
-      [teamId]: { ...state.teams[teamId], name }
-    }
-  })),
-
-  updateTeamScore: (teamId, score) => set((state) => ({
-    teams: {
-      ...state.teams,
-      [teamId]: { ...state.teams[teamId], score }
-    }
-  })),
-
-  setStatus: (status) => set({ status }),
-
-  setBoard: (board) => set({ board }),
-
-  selectQuestion: (question) => set({
-    currentQuestion: question,
-    status: 'question',
-    buzzOrder: [],
-    buzzedPlayer: null,
-    buzzedTeam: null,
-  }),
-
-  teamBuzz: (playerId, teamId, time) => set((state) => {
-    const player = state.players.find(p => p.id === playerId);
-    const newBuzzOrder = [...state.buzzOrder, { playerId, teamId, time }].sort((a, b) => a.time - b.time);
-
-    // First buzzer wins
-    const firstBuzzer = newBuzzOrder[0];
-    const buzzedPlayer = state.players.find(p => p.id === firstBuzzer.playerId) || null;
-
-    return {
-      buzzOrder: newBuzzOrder,
-      buzzedPlayer: state.buzzedPlayer || buzzedPlayer,
-      buzzedTeam: state.buzzedTeam || firstBuzzer.teamId,
-      status: 'buzzing'
-    };
-  }),
-
-  resetBuzz: () => set({
-    buzzOrder: [],
-    buzzedPlayer: null,
-    buzzedTeam: null,
-    status: 'question'
-  }),
-
-  markQuestionAnswered: (questionId, correctTeam = null) => set((state) => {
-    if (!state.board) return state;
-
-    const newBoard: GameBoard = {
-      categories: state.board.categories.map((cat) => ({
-        ...cat,
-        questions: cat.questions.map((q) =>
-          q.id === questionId ? { ...q, isAnswered: true } : q
-        )
-      }))
-    };
-
-    // Check if all questions are answered
-    const allAnswered = newBoard.categories.every(cat =>
-      cat.questions.every(q => q.isAnswered)
-    );
-
-    // If a team answered correctly, they pick next
-    // Otherwise, alternate turns
-    const nextTurn = correctTeam || (state.currentTurn === 'red' ? 'blue' : 'red');
-
-    return {
-      board: newBoard,
-      currentQuestion: null,
-      buzzedPlayer: null,
-      buzzedTeam: null,
-      status: allAnswered ? 'finished' : 'playing',
-      currentTurn: correctTeam || nextTurn,
-      lastCorrectTeam: correctTeam,
-    };
-  }),
-
-  setSelectedCategories: (categories) => set({ selectedCategories: categories }),
-
-  initializeBoard: (categoryIds) => {
-    const categories: Category[] = categoryIds.map((catId) => {
-      const catDef = CATEGORY_DEFINITIONS.find(c => c.id === catId);
-      return {
-        id: catId,
-        name: catDef?.name || catId,
-        description: catDef?.description || '',
-        questions: getQuestionsForCategory(catId)
-      };
-    });
-
-    // Random team starts
-    const startingTeam = Math.random() < 0.5 ? 'red' : 'blue';
-
-    set({
-      board: { categories },
-      status: 'playing',
-      selectedCategories: categoryIds,
-      currentTurn: startingTeam,
-    });
-  },
-
-  setCurrentTurn: (teamId) => set({ currentTurn: teamId }),
-
-  resetGame: () => set({
+export const useGameStore = create<GameStore>()(
+  subscribeWithSelector((set, get) => ({
     ...initialState,
-    roomCode: get().roomCode,
-    players: get().players.map(p => ({ ...p, teamId: null, isCaptain: false })),
-    hostId: get().hostId,
-    teams: {
-      red: createInitialTeam('red', get().teams.red.name),
-      blue: createInitialTeam('blue', get().teams.blue.name),
-    },
-  }),
 
-  updateGameState: (newState) => set((state) => ({ ...state, ...newState })),
-}));
+    setRoomCode: (code) => set({ roomCode: code }),
+
+    setHostId: (id) => set({ hostId: id }),
+
+    addPlayer: (player) =>
+      set((state) => ({
+        players: [...state.players.filter((p) => p.id !== player.id), player],
+      })),
+
+    removePlayer: (playerId) =>
+      set((state) => ({
+        players: state.players.filter((p) => p.id !== playerId),
+      })),
+
+    updatePlayerScore: (playerId, score) =>
+      set((state) => ({
+        players: state.players.map((p) =>
+          p.id === playerId ? { ...p, score } : p
+        ),
+      })),
+
+    setStatus: (status) => set({ status }),
+
+    setBoard: (board) => set({ board }),
+
+    selectQuestion: (question) => {
+      // Check if it's a Daily Double
+      if (question.isDailyDouble) {
+        const state = get();
+        const lastBuzzer = state.buzzOrder[state.buzzOrder.length - 1];
+        const playerId = lastBuzzer?.playerId || state.hostId;
+        const player = state.players.find((p) => p.id === playerId);
+        const maxWager = Math.max(player?.score || 0, state.round === 1 ? 1000 : 2000);
+
+        set({
+          currentQuestion: question,
+          status: 'daily-double',
+          buzzOrder: [],
+          buzzedPlayer: null,
+          dailyDoubleState: {
+            question,
+            playerId,
+            wager: null,
+            maxWager,
+            answered: false,
+          },
+        });
+      } else {
+        set({
+          currentQuestion: question,
+          status: 'question',
+          buzzOrder: [],
+          buzzedPlayer: null,
+        });
+      }
+    },
+
+    playerBuzz: (playerId, time) =>
+      set((state) => {
+        const player = state.players.find((p) => p.id === playerId);
+        const newBuzzOrder = [...state.buzzOrder, { playerId, time }].sort(
+          (a, b) => a.time - b.time
+        );
+
+        // First buzzer wins
+        const firstBuzzer = newBuzzOrder[0];
+        const buzzedPlayer =
+          state.players.find((p) => p.id === firstBuzzer.playerId) || null;
+
+        return {
+          buzzOrder: newBuzzOrder,
+          buzzedPlayer: state.buzzedPlayer || buzzedPlayer,
+          status: 'buzzing',
+        };
+      }),
+
+    resetBuzz: () =>
+      set({
+        buzzOrder: [],
+        buzzedPlayer: null,
+        status: 'question',
+      }),
+
+    markQuestionAnswered: (questionId, answeredBy) =>
+      set((state) => {
+        if (!state.board) return state;
+
+        const newBoard: GameBoard = {
+          categories: state.board.categories.map((cat) => ({
+            ...cat,
+            questions: cat.questions.map((q) =>
+              q.id === questionId ? { ...q, isAnswered: true, answeredBy } : q
+            ),
+          })),
+        };
+
+        // Check if all questions are answered
+        const allAnswered = newBoard.categories.every((cat) =>
+          cat.questions.every((q) => q.isAnswered)
+        );
+
+        // Determine next status
+        let nextStatus: GameStatus = 'playing';
+        if (allAnswered) {
+          if (state.round === 1) {
+            // Move to Double Jeopardy or Final Jeopardy
+            nextStatus = 'playing'; // Will be changed by startDoubleJeopardy
+          } else {
+            // Round 2 finished, start Final Jeopardy
+            nextStatus = 'final-jeopardy-wager';
+          }
+        }
+
+        return {
+          board: newBoard,
+          currentQuestion: null,
+          dailyDoubleState: null,
+          status: allAnswered && state.round === 1 ? 'playing' : nextStatus,
+        };
+      }),
+
+    setSelectedCategories: (categories) => set({ selectedCategories: categories }),
+
+    initializeBoard: (categoryIds) => {
+      const state = get();
+      const multiplier = state.round === 2 ? 2 : 1;
+
+      const categories: Category[] = categoryIds.map((catId) => {
+        const catDef = CATEGORY_DEFINITIONS.find((c) => c.id === catId);
+        const questions = getQuestionsForCategory(catId).map((q) => ({
+          ...q,
+          value: q.value * multiplier,
+        }));
+        return {
+          id: catId,
+          name: catDef?.name || catId,
+          description: catDef?.description || '',
+          questions,
+        };
+      });
+
+      // Add Daily Doubles (1 for round 1, 2 for round 2)
+      const dailyDoubleCount = state.round === 1 ? 1 : 2;
+      const allQuestions = categories.flatMap((c) => c.questions);
+      const eligibleQuestions = allQuestions.filter(
+        (q) => q.value >= (state.round === 1 ? 600 : 1200)
+      );
+
+      // Randomly select Daily Double questions
+      const shuffled = [...eligibleQuestions].sort(() => Math.random() - 0.5);
+      const dailyDoubles = shuffled.slice(0, dailyDoubleCount);
+
+      dailyDoubles.forEach((dd) => {
+        dd.isDailyDouble = true;
+      });
+
+      set({
+        board: { categories },
+        status: 'playing',
+        selectedCategories: categoryIds,
+      });
+    },
+
+    resetGame: () =>
+      set({
+        ...initialState,
+        roomCode: get().roomCode,
+        players: get().players.map((p) => ({ ...p, score: 0 })),
+        hostId: get().hostId,
+        teams: get().teams.map((t) => ({ ...t, score: 0 })),
+        isTeamMode: get().isTeamMode,
+        timerDuration: get().timerDuration,
+        soundEnabled: get().soundEnabled,
+      }),
+
+    updateGameState: (newState) => set((state) => ({ ...state, ...newState })),
+
+    // Round management
+    setRound: (round) => set({ round }),
+
+    startDoubleJeopardy: () => {
+      const state = get();
+      set({ round: 2, status: 'category-select', board: null });
+    },
+
+    // Daily Double
+    triggerDailyDouble: (question, playerId) => {
+      const state = get();
+      const player = state.players.find((p) => p.id === playerId);
+      const maxWager = Math.max(player?.score || 0, state.round === 1 ? 1000 : 2000);
+
+      set({
+        status: 'daily-double',
+        currentQuestion: question,
+        dailyDoubleState: {
+          question,
+          playerId,
+          wager: null,
+          maxWager,
+          answered: false,
+        },
+      });
+    },
+
+    setDailyDoubleWager: (wager) =>
+      set((state) => ({
+        dailyDoubleState: state.dailyDoubleState
+          ? { ...state.dailyDoubleState, wager }
+          : null,
+      })),
+
+    resolveDailyDouble: (correct) =>
+      set((state) => {
+        if (!state.dailyDoubleState) return state;
+
+        const { playerId, wager, question } = state.dailyDoubleState;
+        const player = state.players.find((p) => p.id === playerId);
+        if (!player || wager === null) return state;
+
+        const pointChange = correct ? wager : -wager;
+        const newScore = player.score + pointChange;
+
+        return {
+          players: state.players.map((p) =>
+            p.id === playerId ? { ...p, score: newScore } : p
+          ),
+          dailyDoubleState: { ...state.dailyDoubleState, answered: true },
+        };
+      }),
+
+    // Final Jeopardy
+    startFinalJeopardy: () => {
+      const randomQuestion =
+        FINAL_JEOPARDY_QUESTIONS[
+          Math.floor(Math.random() * FINAL_JEOPARDY_QUESTIONS.length)
+        ];
+
+      set({
+        status: 'final-jeopardy-wager',
+        finalJeopardy: {
+          category: randomQuestion.category,
+          question: randomQuestion.question,
+          answer: randomQuestion.answer,
+          wagers: {},
+          answers: {},
+          revealed: false,
+          showAnswers: false,
+        },
+      });
+    },
+
+    setFinalJeopardyWager: (playerId, wager) =>
+      set((state) => {
+        if (!state.finalJeopardy) return state;
+        return {
+          finalJeopardy: {
+            ...state.finalJeopardy,
+            wagers: { ...state.finalJeopardy.wagers, [playerId]: wager },
+          },
+        };
+      }),
+
+    setFinalJeopardyAnswer: (playerId, answer) =>
+      set((state) => {
+        if (!state.finalJeopardy) return state;
+        return {
+          finalJeopardy: {
+            ...state.finalJeopardy,
+            answers: { ...state.finalJeopardy.answers, [playerId]: answer },
+          },
+        };
+      }),
+
+    revealFinalJeopardy: () =>
+      set((state) => {
+        if (!state.finalJeopardy) return state;
+        return {
+          status: 'final-jeopardy-reveal',
+          finalJeopardy: {
+            ...state.finalJeopardy,
+            revealed: true,
+            showAnswers: true,
+          },
+        };
+      }),
+
+    judgeFinalJeopardy: (playerId, correct) =>
+      set((state) => {
+        if (!state.finalJeopardy) return state;
+
+        const wager = state.finalJeopardy.wagers[playerId] || 0;
+        const player = state.players.find((p) => p.id === playerId);
+        if (!player) return state;
+
+        const pointChange = correct ? wager : -wager;
+        const newScore = player.score + pointChange;
+
+        return {
+          players: state.players.map((p) =>
+            p.id === playerId ? { ...p, score: newScore } : p
+          ),
+        };
+      }),
+
+    // Team mode
+    enableTeamMode: () => set({ isTeamMode: true }),
+
+    disableTeamMode: () =>
+      set((state) => ({
+        isTeamMode: false,
+        teams: [],
+        players: state.players.map((p) => ({ ...p, teamId: undefined })),
+      })),
+
+    createTeam: (name, color) => {
+      const team: Team = {
+        id: `team-${Date.now()}`,
+        name,
+        color,
+        playerIds: [],
+        score: 0,
+      };
+      set((state) => ({
+        teams: [...state.teams, team],
+      }));
+      return team;
+    },
+
+    joinTeam: (playerId, teamId) =>
+      set((state) => ({
+        players: state.players.map((p) =>
+          p.id === playerId ? { ...p, teamId } : p
+        ),
+        teams: state.teams.map((t) =>
+          t.id === teamId
+            ? { ...t, playerIds: [...t.playerIds.filter((id) => id !== playerId), playerId] }
+            : { ...t, playerIds: t.playerIds.filter((id) => id !== playerId) }
+        ),
+      })),
+
+    leaveTeam: (playerId) =>
+      set((state) => ({
+        players: state.players.map((p) =>
+          p.id === playerId ? { ...p, teamId: undefined } : p
+        ),
+        teams: state.teams.map((t) => ({
+          ...t,
+          playerIds: t.playerIds.filter((id) => id !== playerId),
+        })),
+      })),
+
+    updateTeamScore: (teamId, score) =>
+      set((state) => ({
+        teams: state.teams.map((t) =>
+          t.id === teamId ? { ...t, score } : t
+        ),
+      })),
+
+    // Spectator mode
+    setSpectator: (playerId, isSpectator) =>
+      set((state) => ({
+        players: state.players.map((p) =>
+          p.id === playerId ? { ...p, isSpectator } : p
+        ),
+      })),
+
+    // Settings
+    setTimerDuration: (duration) => set({ timerDuration: duration }),
+
+    setSoundEnabled: (enabled) => set({ soundEnabled: enabled }),
+  }))
+);
+
+// Selective subscription hooks for performance
+export const useGameStatus = () => useGameStore((state) => state.status);
+export const usePlayers = () => useGameStore((state) => state.players);
+export const useBoard = () => useGameStore((state) => state.board);
+export const useCurrentQuestion = () => useGameStore((state) => state.currentQuestion);
+export const useBuzzedPlayer = () => useGameStore((state) => state.buzzedPlayer);
+export const useRound = () => useGameStore((state) => state.round);
+export const useTeams = () => useGameStore((state) => state.teams);
+export const useIsTeamMode = () => useGameStore((state) => state.isTeamMode);
+export const useFinalJeopardy = () => useGameStore((state) => state.finalJeopardy);
+export const useDailyDouble = () => useGameStore((state) => state.dailyDoubleState);
+export const useTimerDuration = () => useGameStore((state) => state.timerDuration);
+export const useSoundEnabled = () => useGameStore((state) => state.soundEnabled);
 
 // Generate a random room code
 export function generateRoomCode(): string {

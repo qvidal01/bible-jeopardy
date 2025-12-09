@@ -187,3 +187,68 @@ export function getRandomCategories(count: number): CategoryDefinition[] {
   const shuffled = [...CATEGORY_DEFINITIONS].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
 }
+
+// Final Jeopardy Questions
+export interface FinalJeopardyQuestion {
+  category: string;
+  question: string;
+  answer: string;
+}
+
+export const FINAL_JEOPARDY_QUESTIONS: FinalJeopardyQuestion[] = [
+  {
+    category: "Bible Firsts",
+    question: "This man was the first to be called a Hebrew in the Bible.",
+    answer: "Who is Abraham? (Genesis 14:13)"
+  },
+  {
+    category: "Prophecy Fulfilled",
+    question: "Isaiah 53 prophesied that the Messiah would be buried with the wicked but also with this type of person in his death.",
+    answer: "What is a rich man? (Isaiah 53:9, Matthew 27:57-60)"
+  },
+  {
+    category: "God's Promises",
+    question: "According to Revelation 21:4, these four things will be no more in the new world.",
+    answer: "What are death, mourning, outcry, and pain?"
+  },
+  {
+    category: "Bible Numbers",
+    question: "This is the total number of years from Adam's creation to the Flood, according to Bible chronology.",
+    answer: "What is 1,656 years?"
+  },
+  {
+    category: "Faithful Women",
+    question: "This woman is mentioned in Matthew's genealogy of Jesus and was the mother of Boaz.",
+    answer: "Who is Rahab? (Matthew 1:5)"
+  },
+  {
+    category: "Jesus' Ministry",
+    question: "Jesus' ministry lasted approximately this many years, from his baptism to his death.",
+    answer: "What is three and a half years?"
+  },
+  {
+    category: "Kingdom Hope",
+    question: "Daniel 2:44 says God's Kingdom will do this to all the kingdoms represented in Nebuchadnezzar's dream.",
+    answer: "What is crush and put an end to all these kingdoms, and it alone will stand forever?"
+  },
+  {
+    category: "Bible Geography",
+    question: "This was the final city where Paul was imprisoned before his death, where he wrote 2 Timothy.",
+    answer: "What is Rome?"
+  },
+  {
+    category: "Worship & Service",
+    question: "According to Matthew 24:14, this is what must happen before the end comes.",
+    answer: "What is the good news of the Kingdom being preached in all the inhabited earth for a witness?"
+  },
+  {
+    category: "Divine Names",
+    question: "The divine name Jehovah appears this many times in the original Hebrew Scriptures.",
+    answer: "What is approximately 7,000 times?"
+  }
+];
+
+// Get a random Final Jeopardy question
+export function getRandomFinalJeopardyQuestion(): FinalJeopardyQuestion {
+  return FINAL_JEOPARDY_QUESTIONS[Math.floor(Math.random() * FINAL_JEOPARDY_QUESTIONS.length)];
+}

@@ -1,7 +1,7 @@
 {
   "name": "bible-jeopardy",
-  "version": "1.0.0",
-  "description": "A multiplayer Bible trivia game based on teachings from jw.org. Team-based Jeopardy-style gameplay with 20 categories.",
+  "version": "2.0.0",
+  "description": "A multiplayer Bible trivia game based on teachings from jw.org. Supports both Individual and Team play modes with Daily Doubles, Final Jeopardy, and real-time multiplayer.",
   "keywords": [
     "bible",
     "jeopardy",
@@ -35,17 +35,22 @@
     "docker:down": "docker-compose down"
   },
   "dependencies": {
-    "next": "16.0.5",
+    "@upstash/ratelimit": "^2.0.7",
+    "@upstash/redis": "^1.35.7",
+    "next": "^16.0.7",
     "pusher": "^5.2.0",
     "pusher-js": "^8.4.0",
+    "qrcode": "^1.5.4",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "uuid": "^13.0.0",
+    "zod": "^4.1.13",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",

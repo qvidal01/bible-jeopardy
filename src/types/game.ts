@@ -1,21 +1,22 @@
-// Game Types for Bible Team Jeopardy (Hybrid)
-// Teams compete Jeopardy-style, taking turns picking questions
+// Game Types for Bible Jeopardy
 
 export interface Player {
   id: string;
   name: string;
-  teamId: 'red' | 'blue' | null;
+  score: number;
   isHost: boolean;
-  isCaptain: boolean;
-  buzzTime?: number;
+  isSpectator: boolean;
+  teamId?: string;
+  buzzTime?: number; // timestamp when they buzzed
+  connectedAt: number;
 }
 
 export interface Team {
-  id: 'red' | 'blue';
+  id: string;
   name: string;
+  color: string;
+  playerIds: string[];
   score: number;
-  players: string[]; // player IDs
-  color: 'red' | 'blue';
 }
 
 export interface Question {
@@ -25,6 +26,8 @@ export interface Question {
   question: string;
   answer: string;
   isAnswered: boolean;
+  isDailyDouble?: boolean;
+  answeredBy?: string; // player ID who answered correctly
 }
 
 export interface Category {
@@ -38,24 +41,58 @@ export interface GameBoard {
   categories: Category[];
 }
 
+export interface FinalJeopardyState {
+  category: string;
+  question: string;
+  answer: string;
+  wagers: Record<string, number>; // playerId -> wager amount
+  answers: Record<string, string>; // playerId -> their answer
+  revealed: boolean;
+  showAnswers: boolean;
+}
+
+export interface DailyDoubleState {
+  question: Question;
+  playerId: string;
+  wager: number | null;
+  maxWager: number;
+  answered: boolean;
+}
+
+export type GameStatus =
+  | 'lobby'
+  | 'category-select'
+  | 'playing'
+  | 'question'
+  | 'buzzing'
+  | 'daily-double'
+  | 'final-jeopardy-wager'
+  | 'final-jeopardy-question'
+  | 'final-jeopardy-reveal'
+  | 'reveal'
+  | 'finished';
+
 export interface GameState {
   roomCode: string;
-  status: 'lobby' | 'team-setup' | 'category-select' | 'playing' | 'question' | 'buzzing' | 'reveal' | 'finished';
+  status: GameStatus;
   players: Player[];
-  teams: {
-    red: Team;
-    blue: Team;
-  };
   hostId: string;
   board: GameBoard | null;
   currentQuestion: Question | null;
-  buzzedTeam: 'red' | 'blue' | null;
   buzzedPlayer: Player | null;
-  buzzOrder: { playerId: string; teamId: 'red' | 'blue'; time: number }[];
-  round: number;
+  buzzOrder: { playerId: string; time: number }[];
+  round: 1 | 2; // 1 = Jeopardy, 2 = Double Jeopardy
   selectedCategories: string[];
-  currentTurn: 'red' | 'blue'; // which team picks the next question
-  lastCorrectTeam: 'red' | 'blue' | null; // team that answered correctly last
+  // Team mode
+  isTeamMode: boolean;
+  teams: Team[];
+  // Daily Double
+  dailyDoubleState: DailyDoubleState | null;
+  // Final Jeopardy
+  finalJeopardy: FinalJeopardyState | null;
+  // Settings
+  timerDuration: number; // seconds for answer timer
+  soundEnabled: boolean;
 }
 
 export interface CategoryDefinition {
@@ -65,17 +102,47 @@ export interface CategoryDefinition {
   icon?: string;
 }
 
+// Player statistics for tracking
+export interface PlayerStats {
+  gamesPlayed: number;
+  gamesWon: number;
+  questionsCorrect: number;
+  questionsWrong: number;
+  totalEarnings: number;
+  fastestBuzz: number;
+  favoriteCategory: string;
+  dailyDoublesWon: number;
+}
+
 // Pusher Events
 export type GameEvent =
   | { type: 'PLAYER_JOINED'; player: Player }
   | { type: 'PLAYER_LEFT'; playerId: string }
-  | { type: 'TEAM_JOINED'; playerId: string; teamId: 'red' | 'blue' }
   | { type: 'GAME_STARTED'; board: GameBoard }
   | { type: 'QUESTION_SELECTED'; question: Question }
-  | { type: 'TEAM_BUZZED'; teamId: 'red' | 'blue'; playerId: string; time: number }
-  | { type: 'ANSWER_JUDGED'; teamId: 'red' | 'blue'; correct: boolean; newScore: number }
+  | { type: 'PLAYER_BUZZED'; playerId: string; time: number }
+  | { type: 'ANSWER_JUDGED'; playerId: string; correct: boolean; newScore: number }
   | { type: 'QUESTION_CLOSED'; questionId: string }
   | { type: 'GAME_STATE_UPDATE'; state: Partial<GameState> }
   | { type: 'BUZZ_RESET' }
   | { type: 'REVEAL_ANSWER' }
-  | { type: 'TURN_CHANGED'; teamId: 'red' | 'blue' };
+  | { type: 'DAILY_DOUBLE'; question: Question; playerId: string }
+  | { type: 'DAILY_DOUBLE_WAGER'; playerId: string; wager: number }
+  | { type: 'FINAL_JEOPARDY_START'; category: string; question: string }
+  | { type: 'FINAL_JEOPARDY_WAGER'; playerId: string; wager: number }
+  | { type: 'FINAL_JEOPARDY_ANSWER'; playerId: string }
+  | { type: 'FINAL_JEOPARDY_REVEAL' }
+  | { type: 'ROUND_CHANGE'; round: 1 | 2 }
+  | { type: 'TEAM_CREATED'; team: Team }
+  | { type: 'PLAYER_JOINED_TEAM'; playerId: string; teamId: string };
+
+// Sound effect names
+export type SoundName =
+  | 'buzz'
+  | 'correct'
+  | 'wrong'
+  | 'select'
+  | 'timer'
+  | 'dailyDouble'
+  | 'finalJeopardy'
+  | 'gameOver';
