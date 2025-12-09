@@ -111,6 +111,7 @@ export default function Home() {
       sessionStorage.setItem('playerName', sanitizedName);
       sessionStorage.setItem('isHost', 'true');
       sessionStorage.setItem('gameMode', gameMode);
+      sessionStorage.removeItem('isStudyMode'); // Clear study mode flag
       if (gameMode === 'team') {
         sessionStorage.setItem('teamRedName', teamRedName);
         sessionStorage.setItem('teamBlueName', teamBlueName);
@@ -222,6 +223,7 @@ export default function Home() {
       sessionStorage.setItem('playerId', playerId);
       sessionStorage.setItem('playerName', sanitizedName);
       sessionStorage.setItem('isHost', 'false');
+      sessionStorage.removeItem('isStudyMode'); // Clear study mode flag
       if (isSpectator) {
         sessionStorage.setItem('isSpectator', 'true');
       }
